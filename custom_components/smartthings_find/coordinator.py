@@ -36,6 +36,7 @@ from .api import (
     format_cookie_header,
     location_request_operations,
     parse_cookie_header,
+    parse_menu,
     parse_response_report,
     result_query_operations,
 )
@@ -572,6 +573,14 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
             model=device.model or None,
             configuration_url=str(BASE_URL),
         )
+
+    def supports(self, device_id: str, feature: str) -> bool:
+        """Whether the server offers ``feature`` (``ring``, ``ringStop``,
+        ``location``...) for the device; assume yes until a snapshot says."""
+        state = self._states.get(device_id)
+        if state is None:
+            return True
+        return parse_menu(state.raw.get("snapshot")).get(feature, True)
 
     def is_served(self, device_id: str) -> bool:
         state = self._states.get(device_id)

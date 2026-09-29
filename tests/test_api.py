@@ -344,3 +344,17 @@ def test_running_operation_is_not_an_answer() -> None:
     assert running.location is None
     assert finished.answered_since("CHECK_CONNECTION", sent)
     assert finished.battery == 36
+
+
+def test_parse_menu_flags() -> None:
+    snapshot = {
+        "menu": [
+            {"ring": "Y"},
+            {"ringStop": "N"},
+            {"lock": [{"screenLock": "Y"}]},
+            "junk",
+        ]
+    }
+    assert api.parse_menu(snapshot) == {"ring": True, "ringStop": False}
+    assert api.parse_menu({}) == {}
+    assert api.parse_menu(None) == {}

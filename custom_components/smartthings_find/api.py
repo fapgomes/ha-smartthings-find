@@ -254,6 +254,25 @@ def parse_operations(operations: Any) -> StfDeviceReport:
     return report
 
 
+def parse_menu(snapshot: Any) -> dict[str, bool]:
+    """Features the server offers for a device, from ``setLastSelect.do``.
+
+    ``menu`` is a list of one-key objects such as ``{"ringStop": "N"}``;
+    nested groups (``lock``, ``wipe``) are skipped.
+    """
+    menu = snapshot.get("menu") if isinstance(snapshot, dict) else None
+    features: dict[str, bool] = {}
+    if not isinstance(menu, list):
+        return features
+    for item in menu:
+        if not isinstance(item, dict):
+            continue
+        for name, value in item.items():
+            if isinstance(value, str):
+                features[name] = value.upper() == "Y"
+    return features
+
+
 def location_request_operations(device: StfDevice) -> list[str]:
     """Operations the web client sends to refresh a device.
 

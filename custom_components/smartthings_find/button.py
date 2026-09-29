@@ -39,6 +39,14 @@ class StfRingButton(StfEntity, ButtonEntity):
         action = "start" if start else "stop"
         self._attr_unique_id = f"stf_ring_{action}_{device_id}"
         self._attr_translation_key = "ring" if start else "stop_ring"
+        # SmartTags cannot be stopped remotely (menu ringStop=N).
+        self._feature = "ring" if start else "ringStop"
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.supports(
+            self._device_id, self._feature
+        )
 
     async def async_press(self) -> None:
         await self.coordinator.async_ring(self._device_id, self._start)
@@ -52,6 +60,12 @@ class StfUpdateLocationButton(StfEntity, ButtonEntity):
     def __init__(self, coordinator: StfCoordinator, device_id: str) -> None:
         super().__init__(coordinator, device_id)
         self._attr_unique_id = f"stf_update_location_{device_id}"
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.supports(
+            self._device_id, "location"
+        )
 
     async def async_press(self) -> None:
         await self.coordinator.async_request_location(self._device_id)
