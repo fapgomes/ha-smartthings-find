@@ -1,19 +1,40 @@
 # Changelog
 
-## 2.0.0 — por lançar
+## 2.0.0 — 2026-09-29
 
-Reescrita completa, compatível com as entradas e entidades do upstream v1.4.4.
+Complete rewrite, compatible with the config entries and entities of
+upstream 1bobby-git/HA-SmartThings-Find v1.4.4: replace the upstream
+integration in HACS (without deleting it in Home Assistant) and the existing
+entities, automations and history keep working.
 
-- Pede a localização como o site: `CHECK_CONNECTION` + `LOCATION` para
-  telemóveis e relógios, `CHECK_CONNECTION_WITH_LOCATION` só para tags (o
-  upstream usava a das tags para tudo, e os outros dispositivos ignoravam-na).
-- Lê o resultado dos pedidos de localização (`getOperationResult.do`) e a
-  localização atual das SmartTags (`getTagLocation.do`).
-- Pede um cookie novo quando dispositivos conhecidos deixam de ser devolvidos
-  (sessão degradada) e permite apagar dispositivos que já não existem.
-- Reautenticação só depois de 3 ciclos seguidos rejeitados; comandos (tocar,
-  localizar) nunca são repetidos automaticamente.
-- Keepalive só quando o intervalo de atualização é maior do que o da sessão.
-- Diagnósticos com respostas cruas da API, com dados sensíveis ocultados.
-- Removida a autenticação por conta Samsung e a dependência `samsung-re-find`.
-- Traduções em inglês e português.
+### Fixed
+
+- **Update location now works for phones, watches and earbuds.** It sends
+  `CHECK_CONNECTION` + `LOCATION` like the website; `CHECK_CONNECTION_WITH_LOCATION`
+  is only sent to SmartTags. Upstream sent the tag operation to every device,
+  which non-tag devices ignore.
+- **Battery for watches and phones.** The answer is read from
+  `getOperationResult.do`, with the real percentage; upstream only read the
+  cached snapshot, so watch batteries stayed unknown.
+- Running operations (`oprnStsCd` 2100) and results of earlier requests are no
+  longer taken as the answer to a new request.
+
+### Added
+
+- Current SmartTag location from `getTagLocation.do` after a request.
+- Degraded session detection: when known devices stop being returned while the
+  cookie is still accepted, Home Assistant asks for a new cookie.
+- Devices no longer returned by Samsung can be deleted from Home Assistant.
+- Buttons are unavailable when Samsung does not offer the action for a device
+  (e.g. *Stop ring* on SmartTags).
+- Diagnostics with the raw API responses, cookie, user IDs and coordinates
+  redacted.
+- English and Portuguese translations.
+
+### Changed
+
+- Reauthentication is requested only after 3 rejected update cycles in a row,
+  with retries at setup; commands (ring, locate) are never replayed.
+- Session keepalive runs only when the update interval is longer than it.
+- Cookie-only authentication: the Samsung Account method and the
+  `samsung-re-find` dependency are gone.
