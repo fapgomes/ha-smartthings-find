@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Last known position, battery, connection, lock and request result survive
+  restarts. Samsung's snapshot does not always repeat them (a watch's answer
+  to Update location, for instance), so they were lost on restart.
+
 ## 2.1.0 — 2026-09-29
 
 ### Added

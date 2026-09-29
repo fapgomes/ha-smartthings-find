@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 import logging
 from typing import Any, TypeVar
@@ -31,9 +31,6 @@ from .api import (
     StfDeviceNotFoundError,
     StfDeviceReport,
     StfError,
-    StfLocation,
-    StfLockStatus,
-    StfOperationStatus,
     create_session,
     format_cookie_header,
     location_request_operations,
@@ -65,6 +62,7 @@ from .const import (
     SETUP_AUTH_RETRY_DELAYS,
     SIGNAL_NEW_DEVICES,
 )
+from .models import DeviceState, device_from_store, state_from_store, state_to_store
 from .store import SessionStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,47 +72,11 @@ _T = TypeVar("_T")
 type StfConfigEntry = ConfigEntry[StfCoordinator]
 
 
-@dataclass(slots=True)
-class DeviceState:
-    """Everything the entities show for one device."""
-
-    device: StfDevice
-    served: bool = True
-    battery: int | None = None
-    battery_at: datetime | None = None
-    location: StfLocation | None = None
-    connection: StfOperationStatus | None = None
-    last_operation: StfOperationStatus | None = None
-    lock: StfLockStatus | None = None
-    request: str | None = None
-    raw: dict[str, Any] = field(default_factory=dict)
-
-
 def _int_option(entry: ConfigEntry, key: str, default: int, minimum: int) -> int:
     try:
         return max(minimum, int(entry.options.get(key, default)))
     except (TypeError, ValueError):
         return default
-
-
-def _device_from_store(device_id: str, data: dict[str, Any]) -> StfDevice:
-    return StfDevice(
-        device_id=device_id,
-        name=str(data.get("name") or device_id),
-        type_code=str(data.get("type_code") or ""),
-        model=str(data.get("model") or ""),
-        user_id=data.get("user_id"),
-        raw={},
-    )
-
-
-def _device_to_store(device: StfDevice) -> dict[str, Any]:
-    return {
-        "name": device.name,
-        "type_code": device.type_code,
-        "model": device.model,
-        "user_id": device.user_id,
-    }
 
 
 class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
@@ -171,9 +133,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
         """Restore the session and the known devices, then validate the session."""
         await self._store.async_load()
         for device_id, data in self._store.devices.items():
-            self._states[device_id] = DeviceState(
-                device=_device_from_store(device_id, data), served=False
-            )
+            self._states[device_id] = state_from_store(device_id, data)
         # Installations upgraded from upstream have no device list stored yet;
         # the device registry still remembers them.
         registry = dr.async_get(self.hass)
@@ -183,7 +143,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
             for domain, device_id in entry.identifiers:
                 if domain == DOMAIN and device_id not in self._states:
                     self._states[device_id] = DeviceState(
-                        device=_device_from_store(
+                        device=device_from_store(
                             device_id, {"name": entry.name, "model": entry.model}
                         ),
                         served=False,
@@ -267,7 +227,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
             configured_cookie=self._configured_cookie,
             cookie=format_cookie_header(self._client.cookies()),
             devices={
-                device_id: _device_to_store(state.device)
+                device_id: state_to_store(state)
                 for device_id, state in self._states.items()
             },
         )
