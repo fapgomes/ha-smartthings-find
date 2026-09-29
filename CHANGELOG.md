@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `binary_sensor` Connected, from the last connection check.
+- Diagnostic sensors Network (with the Wi-Fi BSSID) and Last request result.
+- `location_type` attribute on the tracker (`basic` or `last`).
+
 ## 2.0.0 — 2026-09-29
 
 Complete rewrite, compatible with the config entries and entities of

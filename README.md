@@ -77,6 +77,12 @@ For each device:
 | `sensor` Last update | When the device last reported its position to Samsung |
 | `button` Ring / Stop ring | Makes the device ring, or stops it |
 | `button` Update location | Asks the device for its position and battery and waits for the answer |
+| `binary_sensor` Connected | Whether the device answered its last connection check (`checked_at` attribute) |
+| `sensor` Network | Diagnostic: network used for the last position (e.g. `wifi`), Wi-Fi BSSID as attribute; not created for SmartTags |
+| `sensor` Last request result | Diagnostic: `success`, `pending` or `failed` for the most recent operation, with Samsung's codes as attributes |
+
+The tracker also has a `location_type` attribute: `basic` for a fresh fix,
+`last` when Samsung only has the last known position.
 
 ### What to expect
 

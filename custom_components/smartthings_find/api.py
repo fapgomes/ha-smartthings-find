@@ -41,6 +41,9 @@ LOCATION_OPERATIONS = (OP_LOCATION, OP_LASTLOC, "OFFLINE_LOC")
 # oprnStsCd of a finished operation (2100 = still running). The web client
 # treats oprnResultCode 1200 as success.
 OPERATION_DONE = "2800"
+OPERATION_RUNNING = "2100"
+RESULT_SUCCESS = "1200"
+CONNECTION_OPERATIONS = (OP_CHECK_CONNECTION, OP_CHECK_CONNECTION_WITH_LOCATION)
 
 DEVICE_TYPE_TAG = "TAG"
 DEVICE_TYPE_BUDS = "BUDS"
@@ -106,6 +109,31 @@ class StfLocation:
     accuracy: float | None
     reported_at: datetime
     operation: str
+    # ``basic`` for a fresh fix, ``last`` for the last known position.
+    location_type: str | None = None
+    network_type: str | None = None
+    wifi_bssid: str | None = None
+
+
+@dataclass(slots=True)
+class StfOperationStatus:
+    """Outcome of one operation as the server reports it."""
+
+    operation: str
+    status_code: str
+    result_code: str | None
+    created: datetime
+    done: datetime | None
+    connected: bool | None = None
+
+    @property
+    def outcome(self) -> str:
+        """``pending``, ``success`` or ``failed``."""
+        if self.status_code == OPERATION_RUNNING:
+            return "pending"
+        if self.status_code == OPERATION_DONE and self.result_code == RESULT_SUCCESS:
+            return "success"
+        return "failed"
 
 
 @dataclass(slots=True)
@@ -118,6 +146,9 @@ class StfDeviceReport:
     # Newest ``oprnCrtDate`` of each *finished* operation type, to tell
     # fresh answers from running operations and from earlier requests.
     completed: dict[str, datetime] = field(default_factory=dict)
+    # Newest operation of any type, and newest connection check.
+    last_operation: StfOperationStatus | None = None
+    connection: StfOperationStatus | None = None
 
     def answered_since(self, operation: str, since: datetime) -> bool:
         created = self.completed.get(operation)
@@ -207,13 +238,40 @@ def _location_from(source: dict[str, Any], op_type: str) -> StfLocation | None:
         return None
     if not (math.isfinite(latitude) and math.isfinite(longitude)):
         return None
+    se_data = extra.get("seData") if isinstance(extra.get("seData"), dict) else {}
+    wifi = se_data.get("wifi") if isinstance(se_data.get("wifi"), dict) else {}
     return StfLocation(
         latitude=latitude,
         longitude=longitude,
         accuracy=_accuracy(source),
         reported_at=reported_at,
         operation=op_type,
+        location_type=source.get("locationType") or None,
+        network_type=se_data.get("netType") or None,
+        wifi_bssid=wifi.get("bssid") or None,
     )
+
+
+def _operation_status(op: dict[str, Any], op_type: str) -> StfOperationStatus | None:
+    created = parse_stf_date(op.get("oprnCrtDate"))
+    status_code = str(op.get("oprnStsCd") or "")
+    if created is None or not status_code:
+        return None
+    result_code = op.get("oprnResultCode")
+    status = StfOperationStatus(
+        operation=op_type,
+        status_code=status_code,
+        result_code=str(result_code) if result_code is not None else None,
+        created=created,
+        done=parse_stf_date(op.get("oprnDoneDate")),
+    )
+    if op_type in CONNECTION_OPERATIONS and status.outcome != "pending":
+        extra = op.get("extra") if isinstance(op.get("extra"), dict) else {}
+        is_connected = extra.get("isConnected")
+        status.connected = (
+            is_connected if isinstance(is_connected, bool) else status.outcome == "success"
+        )
+    return status
 
 
 def parse_operations(operations: Any) -> StfDeviceReport:
@@ -237,6 +295,15 @@ def parse_operations(operations: Any) -> StfDeviceReport:
 
         if report.battery is None and "battery" in op:
             report.battery = parse_battery(op.get("battery"))
+
+        status = _operation_status(op, op_type)
+        if status is not None:
+            if report.last_operation is None or status.created > report.last_operation.created:
+                report.last_operation = status
+            if op_type in CONNECTION_OPERATIONS and (
+                report.connection is None or status.created > report.connection.created
+            ):
+                report.connection = status
 
         if op_type not in LOCATION_OPERATIONS:
             continue

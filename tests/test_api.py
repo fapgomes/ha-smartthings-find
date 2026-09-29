@@ -358,3 +358,64 @@ def test_parse_menu_flags() -> None:
     assert api.parse_menu(snapshot) == {"ring": True, "ringStop": False}
     assert api.parse_menu({}) == {}
     assert api.parse_menu(None) == {}
+
+
+def test_connection_network_and_last_operation() -> None:
+    report = api.parse_operations(
+        [
+            {
+                "oprnType": "LOCATION",
+                "oprnCrtDate": "20260929221216",
+                "oprnDoneDate": "20260929221222",
+                "oprnStsCd": "2800",
+                "oprnResultCode": "1200",
+                "latitude": "1",
+                "longitude": "2",
+                "locationType": "basic",
+                "extra": {
+                    "gpsUtcDt": "20260929221222",
+                    "seData": {"wifi": {"bssid": "aa:bb"}, "netType": "wifi"},
+                },
+            },
+            {
+                "oprnType": "CHECK_CONNECTION",
+                "oprnCrtDate": "20260929221210",
+                "oprnStsCd": "2800",
+                "oprnResultCode": "1200",
+                "extra": {"isConnected": True},
+            },
+        ]
+    )
+    assert report.location is not None
+    assert report.location.location_type == "basic"
+    assert report.location.network_type == "wifi"
+    assert report.location.wifi_bssid == "aa:bb"
+    assert report.connection is not None and report.connection.connected is True
+    assert report.last_operation is not None
+    assert report.last_operation.operation == "LOCATION"
+    assert report.last_operation.outcome == "success"
+
+
+def test_failed_and_running_outcomes() -> None:
+    # A tag that did not answer (seen: oprnStsCd 1900 / 3451) and a watch
+    # whose location failed (501).
+    tag = api.parse_operations(
+        [{"oprnType": "CHECK_CONNECTION", "oprnCrtDate": "20260929222150",
+          "oprnStsCd": "1900", "oprnResultCode": "3451"}]
+    )
+    assert tag.connection is not None and tag.connection.connected is False
+    assert tag.last_operation.outcome == "failed"
+
+    watch = api.parse_operations(
+        [{"oprnType": "LOCATION", "oprnCrtDate": "20260929193216",
+          "oprnStsCd": "2800", "oprnResultCode": "501"}]
+    )
+    assert watch.last_operation.outcome == "failed"
+    assert watch.connection is None
+
+    running = api.parse_operations(
+        [{"oprnType": "CHECK_CONNECTION", "oprnCrtDate": "20260929222150",
+          "oprnStsCd": "2100"}]
+    )
+    assert running.connection.outcome == "pending"
+    assert running.connection.connected is None

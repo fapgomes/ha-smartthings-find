@@ -10,7 +10,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE
+from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -28,11 +28,21 @@ async def async_setup_entry(
         hass,
         entry,
         async_add_entities,
-        lambda coordinator, device_id: [
-            StfBatterySensor(coordinator, device_id),
-            StfLastUpdateSensor(coordinator, device_id),
-        ],
+        _device_sensors,
     )
+
+
+def _device_sensors(coordinator: StfCoordinator, device_id: str) -> list[SensorEntity]:
+    sensors: list[SensorEntity] = [
+        StfBatterySensor(coordinator, device_id),
+        StfLastUpdateSensor(coordinator, device_id),
+        StfLastResultSensor(coordinator, device_id),
+    ]
+    # Tags report no network; they relay through nearby Galaxy devices.
+    state = (coordinator.data or {}).get(device_id)
+    if state is None or not state.device.is_tag:
+        sensors.append(StfNetworkSensor(coordinator, device_id))
+    return sensors
 
 
 class StfBatterySensor(StfEntity, SensorEntity):
@@ -85,3 +95,57 @@ class StfLastUpdateSensor(StfEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         state = self.state_data
         return {"location_request": state.request} if state and state.request else {}
+
+
+class StfNetworkSensor(StfEntity, SensorEntity):
+    """Network the device used for its last position (``wifi``...)."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "network"
+
+    def __init__(self, coordinator: StfCoordinator, device_id: str) -> None:
+        super().__init__(coordinator, device_id)
+        self._attr_unique_id = f"{device_id}_network"
+
+    @property
+    def native_value(self) -> str | None:
+        state = self.state_data
+        return state.location.network_type if state and state.location else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        state = self.state_data
+        if not state or not state.location or not state.location.wifi_bssid:
+            return {}
+        return {"wifi_bssid": state.location.wifi_bssid}
+
+
+class StfLastResultSensor(StfEntity, SensorEntity):
+    """Outcome of the device's most recent operation."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_options = ["success", "pending", "failed"]
+    _attr_translation_key = "last_result"
+
+    def __init__(self, coordinator: StfCoordinator, device_id: str) -> None:
+        super().__init__(coordinator, device_id)
+        self._attr_unique_id = f"{device_id}_last_result"
+
+    @property
+    def native_value(self) -> str | None:
+        state = self.state_data
+        return state.last_operation.outcome if state and state.last_operation else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        state = self.state_data
+        if not state or not state.last_operation:
+            return {}
+        op = state.last_operation
+        return {
+            "operation": op.operation,
+            "status_code": op.status_code,
+            "result_code": op.result_code,
+            "created": op.created.isoformat(),
+        }

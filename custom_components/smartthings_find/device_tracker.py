@@ -112,4 +112,5 @@ class StfTracker(StfEntity, TrackerEntity):
         return {
             "location_time": state.location.reported_at.isoformat(),
             "location_source": state.location.operation,
+            "location_type": state.location.location_type,
         }

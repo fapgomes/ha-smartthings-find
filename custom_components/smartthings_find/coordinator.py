@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 import logging
 from typing import Any, TypeVar
@@ -32,6 +32,7 @@ from .api import (
     StfDeviceReport,
     StfError,
     StfLocation,
+    StfOperationStatus,
     create_session,
     format_cookie_header,
     location_request_operations,
@@ -81,6 +82,8 @@ class DeviceState:
     battery: int | None = None
     battery_at: datetime | None = None
     location: StfLocation | None = None
+    connection: StfOperationStatus | None = None
+    last_operation: StfOperationStatus | None = None
     request: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -421,6 +424,18 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
             state.location is None or location.reported_at > state.location.reported_at
         ):
             state.location = location
+        for attr in ("connection", "last_operation"):
+            new = getattr(report, attr)
+            old = getattr(state, attr)
+            if new is None:
+                continue
+            # Same creation time: the same operation, keep the finished copy.
+            if (
+                old is None
+                or new.created > old.created
+                or (new.created == old.created and new.outcome != "pending")
+            ):
+                setattr(state, attr, new)
 
     # ------------------------------------------------------------------
     # Commands
@@ -608,6 +623,10 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
                         state.location.operation if state.location else None
                     ),
                     "request": state.request,
+                    "connection": asdict(state.connection) if state.connection else None,
+                    "last_operation": (
+                        asdict(state.last_operation) if state.last_operation else None
+                    ),
                     "raw": state.raw,
                 }
                 for device_id, state in self._states.items()

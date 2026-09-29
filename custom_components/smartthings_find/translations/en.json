@@ -81,6 +81,17 @@
     "sensor": {
       "last_update": {
         "name": "Last update"
+      },
+      "network": {
+        "name": "Network"
+      },
+      "last_result": {
+        "name": "Last request result",
+        "state": {
+          "success": "Success",
+          "pending": "Pending",
+          "failed": "Failed"
+        }
       }
     },
     "button": {
@@ -92,6 +103,11 @@
       },
       "update_location": {
         "name": "Update location"
+      }
+    },
+    "binary_sensor": {
+      "connected": {
+        "name": "Connected"
       }
     }
   }
