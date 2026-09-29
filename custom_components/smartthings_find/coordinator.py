@@ -310,7 +310,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
         for device_id, state in self._states.items():
             if not state.served:
                 continue
-            device_entry = registry.async_get_device(identifiers={(DOMAIN, device_id)})
+            device_entry = self._registry_device(registry, device_id)
             if device_entry is not None and device_entry.disabled:
                 continue
             device = state.device
@@ -341,6 +341,16 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
                 new_ids,
             )
         return dict(self._states)
+
+    def _registry_device(
+        self, registry: dr.DeviceRegistry, device_id: str
+    ) -> dr.DeviceEntry | None:
+        """This entry's registry device for a SmartThings Find device id."""
+        get_by_identifier = getattr(registry, "async_get_device_by_identifier", None)
+        if get_by_identifier is not None:
+            return get_by_identifier((DOMAIN, device_id), self.config_entry.entry_id)
+        # Home Assistant releases before identifiers became per-entry.
+        return registry.async_get_device(identifiers={(DOMAIN, device_id)})
 
     def _merge_device_list(self, devices: list[StfDevice]) -> list[str]:
         """Update served flags; return the ids of devices seen for the first time."""
@@ -373,7 +383,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
         for device_id, state in self._states.items():
             if state.served:
                 continue
-            entry = registry.async_get_device(identifiers={(DOMAIN, device_id)})
+            entry = self._registry_device(registry, device_id)
             if entry is not None and entry.disabled:
                 continue
             missing.append(state.device.name)
