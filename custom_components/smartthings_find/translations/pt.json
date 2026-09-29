@@ -1,0 +1,98 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SmartThings Find",
+        "description": "1. Abra uma **janela privada** do browser e inicie sessão em [{stf_url}]({stf_url}).\n2. Abra as ferramentas de programador (F12) → Rede e recarregue a página.\n3. Selecione o pedido `chkLogin.do` e copie o cabeçalho `Cookie` completo do pedido.\n4. Feche a janela privada **sem terminar a sessão** e não volte a usar essa sessão no browser: a Samsung pode terminar uma sessão usada em dois sítios.\n\n**Modos**\n- Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria).\n- Ativo: pede a posição ao dispositivo em cada atualização (mais recente, gasta bateria do dispositivo).",
+        "data": {
+          "cookie": "Cabeçalho Cookie",
+          "update_interval": "Intervalo de atualização (segundos)",
+          "keepalive_interval": "Intervalo para manter a sessão ativa (segundos)",
+          "mode_smarttags": "Modo das SmartTags",
+          "mode_others": "Modo dos telemóveis, relógios e auriculares"
+        },
+        "data_description": {
+          "cookie": "O cabeçalho `Cookie` completo do pedido `chkLogin.do`."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Renovar a sessão do SmartThings Find",
+        "description": "1. Abra uma **janela privada** do browser e inicie sessão em [{stf_url}]({stf_url}).\n2. Abra as ferramentas de programador (F12) → Rede e recarregue a página.\n3. Selecione o pedido `chkLogin.do` e copie o cabeçalho `Cookie` completo do pedido.\n4. Feche a janela privada **sem terminar a sessão** e não volte a usar essa sessão no browser: a Samsung pode terminar uma sessão usada em dois sítios.",
+        "data": {
+          "cookie": "Cabeçalho Cookie"
+        },
+        "data_description": {
+          "cookie": "O cabeçalho `Cookie` completo do pedido `chkLogin.do`."
+        }
+      },
+      "reconfigure": {
+        "title": "Substituir o cookie do SmartThings Find",
+        "description": "1. Abra uma **janela privada** do browser e inicie sessão em [{stf_url}]({stf_url}).\n2. Abra as ferramentas de programador (F12) → Rede e recarregue a página.\n3. Selecione o pedido `chkLogin.do` e copie o cabeçalho `Cookie` completo do pedido.\n4. Feche a janela privada **sem terminar a sessão** e não volte a usar essa sessão no browser: a Samsung pode terminar uma sessão usada em dois sítios.",
+        "data": {
+          "cookie": "Cabeçalho Cookie"
+        },
+        "data_description": {
+          "cookie": "O cabeçalho `Cookie` completo do pedido `chkLogin.do`."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "O SmartThings Find recusou este cookie. Copie-o outra vez do pedido `chkLogin.do`.",
+      "cannot_connect": "Não foi possível contactar o SmartThings Find. Tente mais tarde.",
+      "no_devices": "O cookie funciona, mas a conta não tem dispositivos.",
+      "unknown": "Resposta inesperada do SmartThings Find."
+    },
+    "abort": {
+      "already_configured": "O SmartThings Find já está configurado.",
+      "reauth_successful": "Sessão renovada.",
+      "reconfigure_successful": "Cookie substituído."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SmartThings Find",
+        "description": "Cole um cabeçalho Cookie novo apenas se quiser substituir a sessão atual.\n\n**Modos**\n- Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria).\n- Ativo: pede a posição ao dispositivo em cada atualização (mais recente, gasta bateria do dispositivo).",
+        "data": {
+          "cookie": "Novo cabeçalho Cookie (deixe vazio para manter o atual)",
+          "update_interval": "Intervalo de atualização (segundos)",
+          "keepalive_interval": "Intervalo para manter a sessão ativa (segundos)",
+          "mode_smarttags": "Modo das SmartTags",
+          "mode_others": "Modo dos telemóveis, relógios e auriculares"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "O SmartThings Find recusou este cookie. Copie-o outra vez do pedido `chkLogin.do`.",
+      "cannot_connect": "Não foi possível contactar o SmartThings Find. Tente mais tarde.",
+      "no_devices": "O cookie funciona, mas a conta não tem dispositivos.",
+      "unknown": "Resposta inesperada do SmartThings Find."
+    }
+  },
+  "selector": {
+    "mode": {
+      "options": {
+        "passive": "Passivo",
+        "active": "Ativo"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_update": {
+        "name": "Última atualização"
+      }
+    },
+    "button": {
+      "ring": {
+        "name": "Tocar"
+      },
+      "stop_ring": {
+        "name": "Parar de tocar"
+      },
+      "update_location": {
+        "name": "Atualizar localização"
+      }
+    }
+  }
+}
