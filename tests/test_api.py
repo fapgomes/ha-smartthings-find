@@ -291,11 +291,12 @@ def test_location_request_operations_match_web_client() -> None:
 
 
 def test_answered_since_ignores_results_of_earlier_requests() -> None:
+    done = {"oprnStsCd": "2800"}
     report = api.parse_operations(
         [
-            {"oprnType": "LOCATION", "oprnCrtDate": "20260929191812"},
-            {"oprnType": "LOCATION", "oprnCrtDate": "20260929220000"},
-            {"oprnType": "CHECK_CONNECTION", "oprnCrtDate": "20260929060000"},
+            {"oprnType": "LOCATION", "oprnCrtDate": "20260929191812", **done},
+            {"oprnType": "LOCATION", "oprnCrtDate": "20260929220000", **done},
+            {"oprnType": "CHECK_CONNECTION", "oprnCrtDate": "20260929060000", **done},
         ]
     )
     sent = datetime(2026, 9, 29, 21, 0, tzinfo=timezone.utc)
@@ -303,3 +304,43 @@ def test_answered_since_ignores_results_of_earlier_requests() -> None:
     assert report.answered_since("LOCATION", sent)
     assert not report.answered_since("CHECK_CONNECTION", sent)
     assert not report.answered_since("RING", sent)
+
+
+def test_running_operation_is_not_an_answer() -> None:
+    # Real getOperationResult.do shapes (location redacted): LOCATION still
+    # running (2100) while CHECK_CONNECTION already finished with the battery.
+    running = api.parse_response_report(
+        {
+            "resultCode": "00",
+            "operation": [
+                {
+                    "oprnCrtDate": "20260929220916",
+                    "oprnType": "LOCATION",
+                    "oprnStsCd": "2100",
+                    "locationType": "basic",
+                }
+            ],
+        }
+    )
+    finished = api.parse_response_report(
+        {
+            "resultCode": "00",
+            "operation": [
+                {
+                    "oprnCrtDate": "20260929220916",
+                    "oprnDoneDate": "20260929220917",
+                    "oprnType": "CHECK_CONNECTION",
+                    "oprnStsCd": "2800",
+                    "oprnResultCode": "1200",
+                    "battery": "36",
+                    "extra": {"battery": "36", "isConnected": True},
+                }
+            ],
+        }
+    )
+    sent = datetime(2026, 9, 29, 22, 9, tzinfo=timezone.utc)
+
+    assert not running.answered_since("LOCATION", sent)
+    assert running.location is None
+    assert finished.answered_since("CHECK_CONNECTION", sent)
+    assert finished.battery == 36

@@ -38,6 +38,10 @@ OP_LOCATION = "LOCATION"
 OP_LASTLOC = "LASTLOC"
 LOCATION_OPERATIONS = (OP_LOCATION, OP_LASTLOC, "OFFLINE_LOC")
 
+# oprnStsCd of a finished operation (2100 = still running). The web client
+# treats oprnResultCode 1200 as success.
+OPERATION_DONE = "2800"
+
 DEVICE_TYPE_TAG = "TAG"
 DEVICE_TYPE_BUDS = "BUDS"
 
@@ -111,12 +115,12 @@ class StfDeviceReport:
     battery: int | None = None
     location: StfLocation | None = None
     operations: list[str] = field(default_factory=list)
-    # Newest ``oprnCrtDate`` per operation type, to tell fresh answers from
-    # results of earlier requests.
-    created: dict[str, datetime] = field(default_factory=dict)
+    # Newest ``oprnCrtDate`` of each *finished* operation type, to tell
+    # fresh answers from running operations and from earlier requests.
+    completed: dict[str, datetime] = field(default_factory=dict)
 
     def answered_since(self, operation: str, since: datetime) -> bool:
-        created = self.created.get(operation)
+        created = self.completed.get(operation)
         return created is not None and created >= since
 
 
@@ -224,10 +228,12 @@ def parse_operations(operations: Any) -> StfDeviceReport:
         op_type = str(op.get("oprnType") or "")
         report.operations.append(op_type)
         created = parse_stf_date(op.get("oprnCrtDate"))
-        if created is not None and (
-            op_type not in report.created or created > report.created[op_type]
+        if (
+            created is not None
+            and str(op.get("oprnStsCd") or "") == OPERATION_DONE
+            and (op_type not in report.completed or created > report.completed[op_type])
         ):
-            report.created[op_type] = created
+            report.completed[op_type] = created
 
         if report.battery is None and "battery" in op:
             report.battery = parse_battery(op.get("battery"))
