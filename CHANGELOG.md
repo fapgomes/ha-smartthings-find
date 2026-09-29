@@ -4,6 +4,9 @@
 
 Reescrita completa, compatível com as entradas e entidades do upstream v1.4.4.
 
+- Pede a localização como o site: `CHECK_CONNECTION` + `LOCATION` para
+  telemóveis e relógios, `CHECK_CONNECTION_WITH_LOCATION` só para tags (o
+  upstream usava a das tags para tudo, e os outros dispositivos ignoravam-na).
 - Lê o resultado dos pedidos de localização (`getOperationResult.do`) e a
   localização atual das SmartTags (`getTagLocation.do`).
 - Pede um cookie novo quando dispositivos conhecidos deixam de ser devolvidos

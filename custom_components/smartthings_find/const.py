@@ -34,8 +34,9 @@ AUTH_FAILURES_BEFORE_REAUTH: Final = 3
 SETUP_AUTH_RETRY_DELAYS: Final[tuple[int, ...]] = (2, 5, 15)
 
 # Delays (seconds) between getOperationResult.do polls after a location
-# request. The web client waits up to 30 s for CHECK_CONNECTION_WITH_LOCATION.
-LOCATION_RESULT_POLL_DELAYS: Final[tuple[int, ...]] = (3, 5, 7, 10, 10)
+# request. The web client waits 30 s for CHECK_CONNECTION_WITH_LOCATION and
+# 40 s for CHECK_CONNECTION and LOCATION.
+LOCATION_RESULT_POLL_DELAYS: Final[tuple[int, ...]] = (3, 5, 7, 10, 10, 10)
 
 RING_MESSAGE: Final = "Home Assistant is ringing your device!"
 

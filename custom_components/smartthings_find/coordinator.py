@@ -24,7 +24,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import (
     BASE_URL,
-    OP_CHECK_CONNECTION_WITH_LOCATION,
     OP_RING,
     StfAuthError,
     StfClient,
@@ -35,8 +34,10 @@ from .api import (
     StfLocation,
     create_session,
     format_cookie_header,
+    location_request_operations,
     parse_cookie_header,
     parse_response_report,
+    result_query_operations,
 )
 from .const import (
     AUTH_FAILURES_BEFORE_REAUTH,
@@ -475,61 +476,76 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
     async def _send_location_request(self, device_id: str) -> None:
         state = self._state(device_id)
         device = state.device
-        try:
-            await self._command(
-                lambda client: client.add_operation(
-                    device, OP_CHECK_CONNECTION_WITH_LOCATION
+        # Answers are recognised by their creation time; allow for clock skew.
+        sent_at = datetime.now(timezone.utc) - timedelta(minutes=2)
+        sent: list[str] = []
+        for operation in location_request_operations(device):
+            try:
+                await self._command(
+                    lambda client, op=operation: client.add_operation(device, op)
                 )
-            )
-        except HomeAssistantError:
-            state.request = REQUEST_FAILED
-            self.async_update_listeners()
-            raise
+            except HomeAssistantError:
+                if not sent:
+                    state.request = REQUEST_FAILED
+                    self.async_update_listeners()
+                    raise
+                break
+            sent.append(operation)
         state.request = REQUEST_PENDING
         self.async_update_listeners()
         task = self.config_entry.async_create_background_task(
             self.hass,
-            self._collect_location(state),
+            self._collect_location(state, sent, sent_at),
             f"{DOMAIN} location result {device_id}",
         )
         self._location_tasks[device_id] = task
         task.add_done_callback(lambda _t: self._location_tasks.pop(device_id, None))
 
-    async def _collect_location(self, state: DeviceState) -> None:
-        """Poll the operation result (and, for tags, their location)."""
+    async def _collect_location(
+        self, state: DeviceState, operations: list[str], sent_at: datetime
+    ) -> None:
+        """Poll each operation's result (and, for tags, their location)."""
         device = state.device
         previous = state.location.reported_at if state.location else None
-
-        def answered(report: StfDeviceReport) -> bool:
-            return report.battery is not None or (
-                report.location is not None
-                and (previous is None or report.location.reported_at > previous)
-            )
+        pending = list(operations)
 
         for delay in LOCATION_RESULT_POLL_DELAYS:
             await asyncio.sleep(delay)
-            reports: list[StfDeviceReport] = []
-            try:
-                result = await self._request(
-                    lambda client: client.get_operation_result(
-                        device, [OP_CHECK_CONNECTION_WITH_LOCATION]
+            for operation in list(pending):
+                queried = result_query_operations(device, operation)
+                try:
+                    result = await self._request(
+                        lambda client, q=queried: client.get_operation_result(
+                            device, q
+                        )
                     )
-                )
-                state.raw["operation_result"] = result
-                reports.append(parse_response_report(result))
-                if device.is_tag:
+                except StfError as err:
+                    _LOGGER.debug("Result of %s for %s failed: %s", operation, device.name, err)
+                    continue
+                state.raw[f"operation_result_{operation}"] = result
+                report = parse_response_report(result)
+                fresh = any(report.answered_since(op, sent_at) for op in queried)
+                self._merge_report(state, report, fresh=fresh)
+                if fresh:
+                    pending.remove(operation)
+
+            if device.is_tag and pending:
+                try:
                     tag = await self._request(
                         lambda client: client.get_tag_location(device, previous)
                     )
+                except StfError as err:
+                    _LOGGER.debug("Tag location for %s failed: %s", device.name, err)
+                else:
                     state.raw["tag_location"] = tag
-                    reports.append(parse_response_report(tag))
-            except StfError as err:
-                _LOGGER.debug("Location result for %s failed: %s", device.name, err)
+                    report = parse_response_report(tag)
+                    self._merge_report(state, report)
+                    if report.location is not None and (
+                        previous is None or report.location.reported_at > previous
+                    ):
+                        pending.clear()
 
-            done = any(answered(report) for report in reports)
-            for report in reports:
-                self._merge_report(state, report, fresh=answered(report))
-            if done:
+            if not pending:
                 state.request = REQUEST_OK
                 self.async_set_updated_data(dict(self._states))
                 return

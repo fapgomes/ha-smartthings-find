@@ -276,3 +276,30 @@ def test_cookies_reflect_rotation_by_server() -> None:
         return client.cookies()
 
     assert run(fake, scenario) == {"JSESSIONID": "session-2"}
+
+
+def test_location_request_operations_match_web_client() -> None:
+    tag = api.StfDevice("1", "Tag", "TAG", "", "u", {})
+    phone = api.StfDevice("2", "Phone", "PHONE DEVICE", "", "u", {})
+    buds = api.StfDevice("3", "Buds", "BUDS", "", "u", {})
+
+    assert api.location_request_operations(tag) == ["CHECK_CONNECTION_WITH_LOCATION"]
+    assert api.location_request_operations(phone) == ["CHECK_CONNECTION", "LOCATION"]
+    assert api.result_query_operations(buds, "LOCATION") == ["LOCATION", "LASTLOC"]
+    assert api.result_query_operations(phone, "LOCATION") == ["LOCATION"]
+    assert api.result_query_operations(buds, "CHECK_CONNECTION") == ["CHECK_CONNECTION"]
+
+
+def test_answered_since_ignores_results_of_earlier_requests() -> None:
+    report = api.parse_operations(
+        [
+            {"oprnType": "LOCATION", "oprnCrtDate": "20260929191812"},
+            {"oprnType": "LOCATION", "oprnCrtDate": "20260929220000"},
+            {"oprnType": "CHECK_CONNECTION", "oprnCrtDate": "20260929060000"},
+        ]
+    )
+    sent = datetime(2026, 9, 29, 21, 0, tzinfo=timezone.utc)
+
+    assert report.answered_since("LOCATION", sent)
+    assert not report.answered_since("CHECK_CONNECTION", sent)
+    assert not report.answered_since("RING", sent)

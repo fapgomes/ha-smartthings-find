@@ -34,9 +34,12 @@ PATH_TAG_LOCATION = "dm/getTagLocation.do"
 OP_RING = "RING"
 OP_CHECK_CONNECTION = "CHECK_CONNECTION"
 OP_CHECK_CONNECTION_WITH_LOCATION = "CHECK_CONNECTION_WITH_LOCATION"
-LOCATION_OPERATIONS = ("LOCATION", "LASTLOC", "OFFLINE_LOC")
+OP_LOCATION = "LOCATION"
+OP_LASTLOC = "LASTLOC"
+LOCATION_OPERATIONS = (OP_LOCATION, OP_LASTLOC, "OFFLINE_LOC")
 
 DEVICE_TYPE_TAG = "TAG"
+DEVICE_TYPE_BUDS = "BUDS"
 
 # Bodies SmartThings Find returns with HTTP 200 once the web session is gone.
 SESSION_EXPIRED_BODIES = frozenset({"fail", "Logout"})
@@ -108,6 +111,13 @@ class StfDeviceReport:
     battery: int | None = None
     location: StfLocation | None = None
     operations: list[str] = field(default_factory=list)
+    # Newest ``oprnCrtDate`` per operation type, to tell fresh answers from
+    # results of earlier requests.
+    created: dict[str, datetime] = field(default_factory=dict)
+
+    def answered_since(self, operation: str, since: datetime) -> bool:
+        created = self.created.get(operation)
+        return created is not None and created >= since
 
 
 def parse_cookie_header(value: str) -> dict[str, str]:
@@ -213,6 +223,11 @@ def parse_operations(operations: Any) -> StfDeviceReport:
             continue
         op_type = str(op.get("oprnType") or "")
         report.operations.append(op_type)
+        created = parse_stf_date(op.get("oprnCrtDate"))
+        if created is not None and (
+            op_type not in report.created or created > report.created[op_type]
+        ):
+            report.created[op_type] = created
 
         if report.battery is None and "battery" in op:
             report.battery = parse_battery(op.get("battery"))
@@ -231,6 +246,24 @@ def parse_operations(operations: Any) -> StfDeviceReport:
             report.location = location
 
     return report
+
+
+def location_request_operations(device: StfDevice) -> list[str]:
+    """Operations the web client sends to refresh a device.
+
+    Tags get one combined operation; everything else gets a connection check
+    (battery) and a separate location request.
+    """
+    if device.is_tag:
+        return [OP_CHECK_CONNECTION_WITH_LOCATION]
+    return [OP_CHECK_CONNECTION, OP_LOCATION]
+
+
+def result_query_operations(device: StfDevice, operation: str) -> list[str]:
+    """What to ask getOperationResult.do for, as the web client does."""
+    if operation == OP_LOCATION and device.type_code == DEVICE_TYPE_BUDS:
+        return [OP_LOCATION, OP_LASTLOC]
+    return [operation]
 
 
 def parse_response_report(payload: Any) -> StfDeviceReport:
