@@ -62,7 +62,7 @@ Find**. You will be asked for the `Cookie` header:
 | Update interval | 120 s | How often the devices are read |
 | Session keepalive | 180 s | Only used when the update interval is longer than this |
 | SmartTag mode | Passive | Active asks the tag for its position on every update |
-| Mode for other devices | Passive | Active asks for the position on every update (uses the device's battery) |
+| Mode for other devices | Passive | Active asks for the position and battery on every update (uses the device's battery) |
 
 The cookie can be replaced in the options or with **Reconfigure**.
 
@@ -73,10 +73,28 @@ For each device:
 | Entity | Description |
 |---|---|
 | `device_tracker` | Last known position, with its time and source as attributes |
-| `sensor` Battery | Battery level; Samsung reports steps (100, 50, 15, 5 %) |
+| `sensor` Battery | Battery level (see below) |
 | `sensor` Last update | When the device last reported its position to Samsung |
-| `button` Ring / Stop ring | Makes the device ring |
+| `button` Ring / Stop ring | Makes the device ring, or stops it |
 | `button` Update location | Asks the device for its position and battery and waits for the answer |
+
+### What to expect
+
+- **Update location** sends the same requests as the website and waits for
+  the device to answer. Phones usually answer within 10 seconds, watches can
+  take around 30 seconds. While waiting, the *Last update* sensor shows a
+  progress icon and its `location_request` attribute is `pending`; it ends as
+  `ok` or `timeout`.
+- **Battery:** phones and watches report the real percentage when they answer
+  a location request. Samsung's cached data and SmartTags only report steps
+  (100, 50, 15 or 5 %).
+- **SmartTags cannot be stopped remotely.** Samsung does not offer it, so
+  *Stop ring* is unavailable for tags: they stop on their own after a while,
+  or when you press the tag's button. The same applies to any button whose
+  action Samsung does not offer for a device.
+- A device that is off, out of coverage or not linked to SmartThings Find
+  keeps its last known position, which may be old (see the `location_time`
+  attribute).
 
 ## Migrating from 1bobby-git/HA-SmartThings-Find
 
