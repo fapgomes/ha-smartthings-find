@@ -78,6 +78,7 @@ For each device:
 | `button` Ring / Stop ring | Makes the device ring, or stops it |
 | `button` Update location | Asks the device for its position and battery and waits for the answer |
 | `binary_sensor` Connected | Whether the device answered its last connection check (`checked_at` attribute) |
+| `binary_sensor` Lock | Screen lock at the last connection check (on = unlocked), with `remote_locked` (locked through SmartThings Find) and `checked_at`; phones, tablets and watches only |
 | `sensor` Network | Diagnostic: network used for the last position (e.g. `wifi`), Wi-Fi BSSID as attribute; not created for SmartTags |
 | `sensor` Last request result | Diagnostic: `success`, `pending` or `failed` for the most recent operation, with Samsung's codes as attributes |
 
@@ -98,6 +99,9 @@ The tracker also has a `location_type` attribute: `basic` for a fresh fix,
   *Stop ring* is unavailable for tags: they stop on their own after a while,
   or when you press the tag's button. The same applies to any button whose
   action Samsung does not offer for a device.
+- **Connected** and **Lock** are refreshed only when the device answers a
+  connection check: on every *Update location*, or on every update in active
+  mode. In between they keep the last answer; see `checked_at`.
 - A device that is off, out of coverage or not linked to SmartThings Find
   keeps its last known position, which may be old (see the `location_time`
   attribute).

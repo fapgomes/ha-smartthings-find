@@ -47,6 +47,8 @@ CONNECTION_OPERATIONS = (OP_CHECK_CONNECTION, OP_CHECK_CONNECTION_WITH_LOCATION)
 
 DEVICE_TYPE_TAG = "TAG"
 DEVICE_TYPE_BUDS = "BUDS"
+# Device types without a screen lock.
+UNLOCKABLE_TYPES = frozenset({DEVICE_TYPE_TAG, DEVICE_TYPE_BUDS})
 
 # Bodies SmartThings Find returns with HTTP 200 once the web session is gone.
 SESSION_EXPIRED_BODIES = frozenset({"fail", "Logout"})
@@ -99,6 +101,10 @@ class StfDevice:
     def is_tag(self) -> bool:
         return self.type_code == DEVICE_TYPE_TAG
 
+    @property
+    def has_lock(self) -> bool:
+        return self.type_code not in UNLOCKABLE_TYPES
+
 
 @dataclass(slots=True)
 class StfLocation:
@@ -113,6 +119,20 @@ class StfLocation:
     location_type: str | None = None
     network_type: str | None = None
     wifi_bssid: str | None = None
+
+
+@dataclass(slots=True)
+class StfLockStatus:
+    """Lock state reported with a connection check.
+
+    ``locked`` is the screen lock *right now* (verified: it follows the user
+    locking and unlocking the phone); ``remote_locked`` is a lock applied
+    through SmartThings Find.
+    """
+
+    locked: bool
+    remote_locked: bool
+    checked_at: datetime
 
 
 @dataclass(slots=True)
@@ -149,6 +169,7 @@ class StfDeviceReport:
     # Newest operation of any type, and newest connection check.
     last_operation: StfOperationStatus | None = None
     connection: StfOperationStatus | None = None
+    lock: StfLockStatus | None = None
 
     def answered_since(self, operation: str, since: datetime) -> bool:
         created = self.completed.get(operation)
@@ -274,6 +295,23 @@ def _operation_status(op: dict[str, Any], op_type: str) -> StfOperationStatus | 
     return status
 
 
+def _lock_status(
+    op: dict[str, Any], status: StfOperationStatus | None
+) -> StfLockStatus | None:
+    extra = op.get("extra") if isinstance(op.get("extra"), dict) else {}
+    lock = extra.get("lockStatus")
+    if status is None or not isinstance(lock, dict):
+        return None
+    normal, remote = lock.get("normalLock"), lock.get("fmmLock")
+    if not isinstance(normal, bool) and not isinstance(remote, bool):
+        return None
+    return StfLockStatus(
+        locked=bool(normal) or bool(remote),
+        remote_locked=bool(remote),
+        checked_at=status.done or status.created,
+    )
+
+
 def parse_operations(operations: Any) -> StfDeviceReport:
     """Extract battery and the newest position from a list of operations."""
     report = StfDeviceReport()
@@ -297,6 +335,9 @@ def parse_operations(operations: Any) -> StfDeviceReport:
             report.battery = parse_battery(op.get("battery"))
 
         status = _operation_status(op, op_type)
+        lock = _lock_status(op, status)
+        if lock is not None and (report.lock is None or lock.checked_at > report.lock.checked_at):
+            report.lock = lock
         if status is not None:
             if report.last_operation is None or status.created > report.last_operation.created:
                 report.last_operation = status

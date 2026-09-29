@@ -5,6 +5,8 @@
 ### Added
 
 - `binary_sensor` Connected, from the last connection check.
+- `binary_sensor` Lock: the screen lock at the last connection check (verified
+  to follow the phone being locked and unlocked), plus remote lock.
 - Diagnostic sensors Network (with the Wi-Fi BSSID) and Last request result.
 - `location_type` attribute on the tracker (`basic` or `last`).
 

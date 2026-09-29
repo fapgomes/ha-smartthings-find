@@ -32,6 +32,7 @@ from .api import (
     StfDeviceReport,
     StfError,
     StfLocation,
+    StfLockStatus,
     StfOperationStatus,
     create_session,
     format_cookie_header,
@@ -84,6 +85,7 @@ class DeviceState:
     location: StfLocation | None = None
     connection: StfOperationStatus | None = None
     last_operation: StfOperationStatus | None = None
+    lock: StfLockStatus | None = None
     request: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -424,6 +426,10 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
             state.location is None or location.reported_at > state.location.reported_at
         ):
             state.location = location
+        if report.lock is not None and (
+            state.lock is None or report.lock.checked_at > state.lock.checked_at
+        ):
+            state.lock = report.lock
         for attr in ("connection", "last_operation"):
             new = getattr(report, attr)
             old = getattr(state, attr)
@@ -624,6 +630,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
                     ),
                     "request": state.request,
                     "connection": asdict(state.connection) if state.connection else None,
+                    "lock": asdict(state.lock) if state.lock else None,
                     "last_operation": (
                         asdict(state.last_operation) if state.last_operation else None
                     ),

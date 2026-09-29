@@ -419,3 +419,35 @@ def test_failed_and_running_outcomes() -> None:
     )
     assert running.connection.outcome == "pending"
     assert running.connection.connected is None
+
+
+def test_lock_status_from_connection_check() -> None:
+    def check(created: str, lock: dict[str, bool]) -> dict[str, Any]:
+        return {
+            "oprnType": "CHECK_CONNECTION",
+            "oprnCrtDate": created,
+            "oprnDoneDate": created,
+            "oprnStsCd": "2800",
+            "oprnResultCode": "1200",
+            "extra": {"lockStatus": lock},
+        }
+
+    # Real sequence: unlocked at 22:28:11, locked again at 22:29:11.
+    report = api.parse_operations(
+        [
+            check("20260929222811", {"fmmLock": False, "normalLock": False}),
+            check("20260929222911", {"fmmLock": False, "normalLock": True}),
+        ]
+    )
+    assert report.lock is not None
+    assert report.lock.locked is True and report.lock.remote_locked is False
+    assert report.lock.checked_at == datetime(2026, 9, 29, 22, 29, 11, tzinfo=timezone.utc)
+
+    remote = api.parse_operations(
+        [check("20260929230000", {"fmmLock": True, "normalLock": False})]
+    )
+    assert remote.lock.locked is True and remote.lock.remote_locked is True
+    assert api.parse_operations([{"oprnType": "LOCATION"}]).lock is None
+
+    assert not api.StfDevice("1", "T", "TAG", "", None, {}).has_lock
+    assert api.StfDevice("2", "P", "PHONE DEVICE", "", None, {}).has_lock
