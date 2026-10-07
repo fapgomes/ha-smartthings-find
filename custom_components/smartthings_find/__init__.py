@@ -16,6 +16,7 @@ PLATFORMS = [
     Platform.BUTTON,
     Platform.DEVICE_TRACKER,
     Platform.SENSOR,
+    Platform.SWITCH,
 ]
 
 

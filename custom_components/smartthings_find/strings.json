@@ -3,16 +3,20 @@
     "step": {
       "user": {
         "title": "SmartThings Find",
-        "description": "1. Open a **private browser window** and sign in to [{stf_url}]({stf_url}).\n2. Open Developer Tools (F12) → Network and reload the page.\n3. Select the `chkLogin.do` request and copy its whole `Cookie` request header.\n4. Close the private window **without signing out**, and do not use that session in the browser again: Samsung may end a session that is used in two places.\n\n**Modes**\n- Passive: read the last position Samsung has (no extra battery use).\n- Active: ask the device for its position on every update (fresher, uses the device's battery).",
+        "description": "1. Open a **private browser window** and sign in to [{stf_url}]({stf_url}).\n2. Open Developer Tools (F12) → Network and reload the page.\n3. Select the `chkLogin.do` request and copy its whole `Cookie` request header.\n4. Close the private window **without signing out**, and do not use that session in the browser again: Samsung may end a session that is used in two places.\n\n**Modes** (the default for each device; change it per device with its *Automatic location update* switch)\n- Passive: read the last position Samsung has (no extra battery use).\n- Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery).",
         "data": {
           "cookie": "Cookie header",
           "update_interval": "Update interval (seconds)",
           "keepalive_interval": "Session keepalive interval (seconds)",
-          "mode_smarttags": "SmartTag mode",
-          "mode_others": "Mode for phones, watches and earbuds"
+          "mode_smarttags": "Default SmartTag mode",
+          "mode_others": "Default mode for phones, watches and earbuds",
+          "active_interval": "Automatic update interval (seconds)",
+          "max_location_age": "Maximum position age (minutes, 0 = no limit)"
         },
         "data_description": {
-          "cookie": "The complete `Cookie` header of the `chkLogin.do` request."
+          "cookie": "The complete `Cookie` header of the `chkLogin.do` request.",
+          "active_interval": "Minimum time between automatic location requests to the same device. Requests are only sent on updates, so the real interval is rounded up to the next update.",
+          "max_location_age": "After this, the tracker stops reporting the old position (state unknown), so `person` falls back to its other trackers."
         }
       },
       "reauth_confirm": {
@@ -52,13 +56,19 @@
     "step": {
       "init": {
         "title": "SmartThings Find",
-        "description": "Paste a new Cookie header only to replace the current session.\n\n**Modes**\n- Passive: read the last position Samsung has (no extra battery use).\n- Active: ask the device for its position on every update (fresher, uses the device's battery).",
+        "description": "Paste a new Cookie header only to replace the current session.\n\n**Modes** (the default for each device; change it per device with its *Automatic location update* switch)\n- Passive: read the last position Samsung has (no extra battery use).\n- Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery).",
         "data": {
           "cookie": "New Cookie header (leave empty to keep the current one)",
           "update_interval": "Update interval (seconds)",
           "keepalive_interval": "Session keepalive interval (seconds)",
-          "mode_smarttags": "SmartTag mode",
-          "mode_others": "Mode for phones, watches and earbuds"
+          "mode_smarttags": "Default SmartTag mode",
+          "mode_others": "Default mode for phones, watches and earbuds",
+          "active_interval": "Automatic update interval (seconds)",
+          "max_location_age": "Maximum position age (minutes, 0 = no limit)"
+        },
+        "data_description": {
+          "active_interval": "Minimum time between automatic location requests to the same device. Requests are only sent on updates, so the real interval is rounded up to the next update.",
+          "max_location_age": "After this, the tracker stops reporting the old position (state unknown), so `person` falls back to its other trackers."
         }
       }
     },
@@ -108,6 +118,11 @@
     "binary_sensor": {
       "connected": {
         "name": "Connected"
+      }
+    },
+    "switch": {
+      "auto_location": {
+        "name": "Automatic location update"
       }
     }
   }

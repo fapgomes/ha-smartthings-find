@@ -41,17 +41,22 @@ from .api import (
 )
 from .const import (
     AUTH_FAILURES_BEFORE_REAUTH,
+    CONF_ACTIVE_INTERVAL,
     CONF_ACTIVE_MODE_OTHERS,
     CONF_ACTIVE_MODE_SMARTTAGS,
     CONF_COOKIE,
     CONF_KEEPALIVE_INTERVAL,
+    CONF_MAX_LOCATION_AGE,
     CONF_UPDATE_INTERVAL,
+    DEFAULT_ACTIVE_INTERVAL,
     DEFAULT_ACTIVE_MODE_OTHERS,
     DEFAULT_ACTIVE_MODE_SMARTTAGS,
     DEFAULT_KEEPALIVE_INTERVAL,
+    DEFAULT_MAX_LOCATION_AGE,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     LOCATION_RESULT_POLL_DELAYS,
+    MIN_ACTIVE_INTERVAL,
     MIN_KEEPALIVE_INTERVAL,
     MIN_UPDATE_INTERVAL,
     REQUEST_FAILED,
@@ -68,6 +73,9 @@ from .store import SessionStore
 _LOGGER = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
+
+# Polling drifts by a few seconds; a request due a little later is still sent.
+_ACTIVE_INTERVAL_TOLERANCE = timedelta(seconds=10)
 
 type StfConfigEntry = ConfigEntry[StfCoordinator]
 
@@ -111,6 +119,16 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
         self._active_others = bool(
             entry.options.get(CONF_ACTIVE_MODE_OTHERS, DEFAULT_ACTIVE_MODE_OTHERS)
         )
+        self._active_interval = timedelta(
+            seconds=_int_option(
+                entry,
+                CONF_ACTIVE_INTERVAL,
+                DEFAULT_ACTIVE_INTERVAL,
+                MIN_ACTIVE_INTERVAL,
+            )
+        )
+        max_age = _int_option(entry, CONF_MAX_LOCATION_AGE, DEFAULT_MAX_LOCATION_AGE, 0)
+        self.max_location_age = timedelta(minutes=max_age) if max_age else None
         self._store = SessionStore(hass, entry.entry_id)
         self._client: StfClient | None = None
         # Every request goes through this lock: the CSRF token and the cookie
@@ -121,6 +139,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
         self._last_request = datetime.min.replace(tzinfo=timezone.utc)
         self._degraded_reported = False
         self._location_tasks: dict[str, asyncio.Task[None]] = {}
+        self._location_requested: dict[str, datetime] = {}
 
     # ------------------------------------------------------------------
     # Setup and teardown
@@ -259,8 +278,34 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
     # ------------------------------------------------------------------
     # Polling
 
-    def _is_active(self, device: StfDevice) -> bool:
+    def _default_auto_location(self, device: StfDevice) -> bool:
+        """The SmartTag / other devices mode from the options."""
         return self._active_tags if device.is_tag else self._active_others
+
+    def auto_location(self, device_id: str) -> bool:
+        """Whether location requests are sent automatically to the device."""
+        state = self._states.get(device_id)
+        if state is None:
+            return False
+        if state.auto_location is not None:
+            return state.auto_location
+        return self._default_auto_location(state.device)
+
+    async def async_set_auto_location(self, device_id: str, enabled: bool) -> None:
+        state = self._states.get(device_id)
+        if state is None:
+            return
+        state.auto_location = enabled
+        await self._persist()
+        self.async_update_listeners()
+
+    def _auto_location_due(self, device_id: str, now: datetime) -> bool:
+        if not self.auto_location(device_id):
+            return False
+        last = self._location_requested.get(device_id)
+        if last is None:
+            return True
+        return now - last >= self._active_interval - _ACTIVE_INTERVAL_TOLERANCE
 
     async def _async_update_data(self) -> dict[str, DeviceState]:
         try:
@@ -273,6 +318,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
 
         new_ids = self._merge_device_list(devices)
         registry = dr.async_get(self.hass)
+        now = datetime.now(timezone.utc)
 
         for device_id, state in self._states.items():
             if not state.served:
@@ -281,8 +327,8 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
             if device_entry is not None and device_entry.disabled:
                 continue
             device = state.device
-            if self._is_active(device):
-                self._start_location_request(device.device_id)
+            if self._auto_location_due(device_id, now):
+                self._start_location_request(device_id)
             try:
                 snapshot = await self._request(
                     lambda client, d=device: client.get_snapshot(d.device_id)
@@ -441,9 +487,11 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
         await self._send_location_request(device_id)
 
     def _start_location_request(self, device_id: str) -> None:
-        """Active mode: same as the button, without surfacing errors."""
+        """Automatic request: same as the button, without surfacing errors."""
         if device_id in self._location_tasks:
             return
+        # Counted from the attempt, so a failing device is not retried every cycle.
+        self._location_requested[device_id] = datetime.now(timezone.utc)
 
         async def _run() -> None:
             try:
@@ -458,6 +506,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
     async def _send_location_request(self, device_id: str) -> None:
         state = self._state(device_id)
         device = state.device
+        self._location_requested[device_id] = datetime.now(timezone.utc)
         # Answers are recognised by their creation time; allow for clock skew.
         sent_at = datetime.now(timezone.utc) - timedelta(minutes=2)
         sent: list[str] = []
@@ -589,6 +638,8 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
                         state.location.operation if state.location else None
                     ),
                     "request": state.request,
+                    "auto_location": self.auto_location(device_id),
+                    "location_requested": self._location_requested.get(device_id),
                     "connection": asdict(state.connection) if state.connection else None,
                     "lock": asdict(state.lock) if state.lock else None,
                     "last_operation": (

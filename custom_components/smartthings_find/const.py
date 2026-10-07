@@ -17,14 +17,21 @@ CONF_UPDATE_INTERVAL: Final = "update_interval"
 CONF_KEEPALIVE_INTERVAL: Final = "keepalive_interval"
 CONF_ACTIVE_MODE_SMARTTAGS: Final = "active_mode_smarttags"
 CONF_ACTIVE_MODE_OTHERS: Final = "active_mode_others"
+CONF_ACTIVE_INTERVAL: Final = "active_interval"
+CONF_MAX_LOCATION_AGE: Final = "max_location_age"
 
 DEFAULT_UPDATE_INTERVAL: Final = 120
 DEFAULT_KEEPALIVE_INTERVAL: Final = 180
 DEFAULT_ACTIVE_MODE_SMARTTAGS: Final = False
 DEFAULT_ACTIVE_MODE_OTHERS: Final = False
+# Minimum time between automatic location requests to the same device.
+DEFAULT_ACTIVE_INTERVAL: Final = 300
+# Minutes after which the tracker stops reporting a position; 0 keeps it.
+DEFAULT_MAX_LOCATION_AGE: Final = 0
 
 MIN_UPDATE_INTERVAL: Final = 30
 MIN_KEEPALIVE_INTERVAL: Final = 60
+MIN_ACTIVE_INTERVAL: Final = 60
 
 # Consecutive rejected update cycles before asking for a new cookie. A single
 # ``Logout`` body is occasionally transient.

@@ -61,8 +61,22 @@ Find**. You will be asked for the `Cookie` header:
 |---|---|---|
 | Update interval | 120 s | How often the devices are read |
 | Session keepalive | 180 s | Only used when the update interval is longer than this |
-| SmartTag mode | Passive | Active asks the tag for its position on every update |
-| Mode for other devices | Passive | Active asks for the position and battery on every update (uses the device's battery) |
+| Default SmartTag mode | Passive | Active asks the tag for its position automatically |
+| Default mode for other devices | Passive | Active asks for the position and battery automatically (uses the device's battery) |
+| Automatic update interval | 300 s | Minimum time between automatic requests to the same device; rounded up to the next update |
+| Maximum position age | 0 (no limit) | Minutes after which the tracker stops reporting an old position (state `unknown`) |
+
+The modes are only defaults: each device has an *Automatic location update*
+switch that overrides them, so active mode can be turned on for one phone
+without waking every device in the account. A press of *Update location*
+also restarts that device's automatic interval.
+
+**Using the tracker in a `person`.** Samsung keeps the last position of a
+device that is off, offline or not asked for a while, and that position can
+be hours old. With the maximum position age set (for example 30 minutes), an
+old position is dropped and `person` uses its other trackers instead. The
+tracker only writes its state when the position changes, so an unchanged
+position never looks newer than the companion app's.
 
 The cookie can be replaced in the options or with **Reconfigure**.
 
@@ -77,6 +91,7 @@ For each device:
 | `sensor` Last update | When the device last reported its position to Samsung |
 | `button` Ring / Stop ring | Makes the device ring, or stops it |
 | `button` Update location | Asks the device for its position and battery and waits for the answer |
+| `switch` Automatic location update | Configuration: active mode for this device (see Options) |
 | `binary_sensor` Connected | Whether the device answered its last connection check (`checked_at` attribute) |
 | `binary_sensor` Lock | Screen lock at the last connection check (on = unlocked), with `remote_locked` (locked through SmartThings Find) and `checked_at`; phones, tablets and watches only |
 | `sensor` Network | Diagnostic: network used for the last position (e.g. `wifi`), Wi-Fi BSSID as attribute; not created for SmartTags |
@@ -100,8 +115,8 @@ The tracker also has a `location_type` attribute: `basic` for a fresh fix,
   or when you press the tag's button. The same applies to any button whose
   action Samsung does not offer for a device.
 - **Connected** and **Lock** are refreshed only when the device answers a
-  connection check: on every *Update location*, or on every update in active
-  mode. In between they keep the last answer; see `checked_at`.
+  connection check: on every *Update location*, or on every automatic
+  request when the device's *Automatic location update* is on. In between they keep the last answer; see `checked_at`.
 - A device that is off, out of coverage or not linked to SmartThings Find
   keeps its last known position, which may be old (see the `location_time`
   attribute).

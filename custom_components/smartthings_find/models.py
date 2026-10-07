@@ -25,6 +25,8 @@ class DeviceState:
     last_operation: StfOperationStatus | None = None
     lock: StfLockStatus | None = None
     request: str | None = None
+    # Automatic location requests: None follows the default for the device type.
+    auto_location: bool | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -88,6 +90,7 @@ def state_to_store(state: DeviceState) -> dict[str, Any]:
         "user_id": device.user_id,
         "battery": state.battery,
         "battery_at": _to_json(state.battery_at),
+        "auto_location": state.auto_location,
     }
     for name in _SAVED_FIELDS:
         value = getattr(state, name)
@@ -104,6 +107,8 @@ def state_from_store(device_id: str, data: dict[str, Any]) -> DeviceState:
             state.battery_at = datetime.fromisoformat(data["battery_at"])
         except ValueError:
             state.battery = None
+    auto_location = data.get("auto_location")
+    state.auto_location = auto_location if isinstance(auto_location, bool) else None
     for name, cls in _SAVED_FIELDS.items():
         setattr(state, name, _dataclass_from_json(cls, data.get(name)))
     return state

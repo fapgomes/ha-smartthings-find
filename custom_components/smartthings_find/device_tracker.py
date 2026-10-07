@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.device_tracker import SourceType, TrackerEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api import BASE_URL
+from .api import BASE_URL, StfLocation
 from .coordinator import StfConfigEntry, StfCoordinator
 from .entity import StfEntity, async_setup_device_entities
 
@@ -83,25 +84,50 @@ class StfTracker(StfEntity, TrackerEntity):
         self._attr_unique_id = f"{device_id}_tracker"
 
     @property
+    def force_update(self) -> bool:
+        """Only write the state when the position changes.
+
+        TrackerEntity forces every write, so each poll would give an unchanged
+        (possibly hours old) position a new ``last_updated``. ``person`` takes
+        the most recently updated GPS tracker, so that stale position would
+        keep overriding the companion app's current one.
+        """
+        return False
+
+    @property
+    def _position(self) -> StfLocation | None:
+        """The last position, unless older than the configured maximum age."""
+        state = self.state_data
+        if not state or not state.location:
+            return None
+        max_age = self.coordinator.max_location_age
+        if (
+            max_age is not None
+            and datetime.now(timezone.utc) - state.location.reported_at > max_age
+        ):
+            return None
+        return state.location
+
+    @property
     def entity_picture(self) -> str | None:
         state = self.state_data
         return device_icon_url(state.device.raw) if state else None
 
     @property
     def latitude(self) -> float | None:
-        state = self.state_data
-        return state.location.latitude if state and state.location else None
+        location = self._position
+        return location.latitude if location else None
 
     @property
     def longitude(self) -> float | None:
-        state = self.state_data
-        return state.location.longitude if state and state.location else None
+        location = self._position
+        return location.longitude if location else None
 
     @property
     def location_accuracy(self) -> float:
-        state = self.state_data
-        if state and state.location and state.location.accuracy is not None:
-            return state.location.accuracy
+        location = self._position
+        if location and location.accuracy is not None:
+            return location.accuracy
         return 0
 
     @property

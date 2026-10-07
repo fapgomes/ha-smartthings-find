@@ -3,16 +3,20 @@
     "step": {
       "user": {
         "title": "SmartThings Find",
-        "description": "1. Abra uma **janela privada** do browser e inicie sessão em [{stf_url}]({stf_url}).\n2. Abra as ferramentas de programador (F12) → Rede e recarregue a página.\n3. Selecione o pedido `chkLogin.do` e copie o cabeçalho `Cookie` completo do pedido.\n4. Feche a janela privada **sem terminar a sessão** e não volte a usar essa sessão no browser: a Samsung pode terminar uma sessão usada em dois sítios.\n\n**Modos**\n- Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria).\n- Ativo: pede a posição ao dispositivo em cada atualização (mais recente, gasta bateria do dispositivo).",
+        "description": "1. Abra uma **janela privada** do browser e inicie sessão em [{stf_url}]({stf_url}).\n2. Abra as ferramentas de programador (F12) → Rede e recarregue a página.\n3. Selecione o pedido `chkLogin.do` e copie o cabeçalho `Cookie` completo do pedido.\n4. Feche a janela privada **sem terminar a sessão** e não volte a usar essa sessão no browser: a Samsung pode terminar uma sessão usada em dois sítios.\n\n**Modos** (o valor por omissão de cada dispositivo; altere-o por dispositivo no interruptor *Atualização automática da localização*)\n- Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria).\n- Ativo: pede a posição ao dispositivo automaticamente, no máximo uma vez por intervalo de atualização automática (mais recente, gasta bateria do dispositivo).",
         "data": {
           "cookie": "Cabeçalho Cookie",
           "update_interval": "Intervalo de atualização (segundos)",
           "keepalive_interval": "Intervalo para manter a sessão ativa (segundos)",
-          "mode_smarttags": "Modo das SmartTags",
-          "mode_others": "Modo dos telemóveis, relógios e auriculares"
+          "mode_smarttags": "Modo por omissão das SmartTags",
+          "mode_others": "Modo por omissão dos telemóveis, relógios e auriculares",
+          "active_interval": "Intervalo de atualização automática (segundos)",
+          "max_location_age": "Idade máxima da posição (minutos, 0 = sem limite)"
         },
         "data_description": {
-          "cookie": "O cabeçalho `Cookie` completo do pedido `chkLogin.do`."
+          "cookie": "O cabeçalho `Cookie` completo do pedido `chkLogin.do`.",
+          "active_interval": "Tempo mínimo entre pedidos automáticos de localização ao mesmo dispositivo. Os pedidos só são enviados nas atualizações, por isso o intervalo real é arredondado para a atualização seguinte.",
+          "max_location_age": "Depois deste tempo, o tracker deixa de reportar a posição antiga (estado desconhecido) e o `person` passa a usar os outros trackers."
         }
       },
       "reauth_confirm": {
@@ -52,13 +56,19 @@
     "step": {
       "init": {
         "title": "SmartThings Find",
-        "description": "Cole um cabeçalho Cookie novo apenas se quiser substituir a sessão atual.\n\n**Modos**\n- Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria).\n- Ativo: pede a posição ao dispositivo em cada atualização (mais recente, gasta bateria do dispositivo).",
+        "description": "Cole um cabeçalho Cookie novo apenas se quiser substituir a sessão atual.\n\n**Modos** (o valor por omissão de cada dispositivo; altere-o por dispositivo no interruptor *Atualização automática da localização*)\n- Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria).\n- Ativo: pede a posição ao dispositivo automaticamente, no máximo uma vez por intervalo de atualização automática (mais recente, gasta bateria do dispositivo).",
         "data": {
           "cookie": "Novo cabeçalho Cookie (deixe vazio para manter o atual)",
           "update_interval": "Intervalo de atualização (segundos)",
           "keepalive_interval": "Intervalo para manter a sessão ativa (segundos)",
-          "mode_smarttags": "Modo das SmartTags",
-          "mode_others": "Modo dos telemóveis, relógios e auriculares"
+          "mode_smarttags": "Modo por omissão das SmartTags",
+          "mode_others": "Modo por omissão dos telemóveis, relógios e auriculares",
+          "active_interval": "Intervalo de atualização automática (segundos)",
+          "max_location_age": "Idade máxima da posição (minutos, 0 = sem limite)"
+        },
+        "data_description": {
+          "active_interval": "Tempo mínimo entre pedidos automáticos de localização ao mesmo dispositivo. Os pedidos só são enviados nas atualizações, por isso o intervalo real é arredondado para a atualização seguinte.",
+          "max_location_age": "Depois deste tempo, o tracker deixa de reportar a posição antiga (estado desconhecido) e o `person` passa a usar os outros trackers."
         }
       }
     },
@@ -108,6 +118,11 @@
     "binary_sensor": {
       "connected": {
         "name": "Ligado"
+      }
+    },
+    "switch": {
+      "auto_location": {
+        "name": "Atualização automática da localização"
       }
     }
   }

@@ -29,17 +29,22 @@ from .api import (
 )
 from .const import (
     AUTH_METHOD_COOKIE,
+    CONF_ACTIVE_INTERVAL,
     CONF_ACTIVE_MODE_OTHERS,
     CONF_ACTIVE_MODE_SMARTTAGS,
     CONF_AUTH_METHOD,
     CONF_COOKIE,
     CONF_KEEPALIVE_INTERVAL,
+    CONF_MAX_LOCATION_AGE,
     CONF_UPDATE_INTERVAL,
+    DEFAULT_ACTIVE_INTERVAL,
     DEFAULT_ACTIVE_MODE_OTHERS,
     DEFAULT_ACTIVE_MODE_SMARTTAGS,
     DEFAULT_KEEPALIVE_INTERVAL,
+    DEFAULT_MAX_LOCATION_AGE,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    MIN_ACTIVE_INTERVAL,
     MIN_KEEPALIVE_INTERVAL,
     MIN_UPDATE_INTERVAL,
 )
@@ -112,6 +117,14 @@ def _settings_schema(options: Mapping[str, Any]) -> dict[Any, Any]:
             _FIELD_MODE_OTHERS,
             default=mode(CONF_ACTIVE_MODE_OTHERS, DEFAULT_ACTIVE_MODE_OTHERS),
         ): _MODE_SELECTOR,
+        vol.Required(
+            CONF_ACTIVE_INTERVAL,
+            default=options.get(CONF_ACTIVE_INTERVAL, DEFAULT_ACTIVE_INTERVAL),
+        ): vol.All(vol.Coerce(int), vol.Range(min=MIN_ACTIVE_INTERVAL, max=86400)),
+        vol.Required(
+            CONF_MAX_LOCATION_AGE,
+            default=options.get(CONF_MAX_LOCATION_AGE, DEFAULT_MAX_LOCATION_AGE),
+        ): vol.All(vol.Coerce(int), vol.Range(min=0, max=10080)),
     }
 
 
@@ -121,6 +134,8 @@ def _options_from_input(user_input: Mapping[str, Any]) -> dict[str, Any]:
         CONF_KEEPALIVE_INTERVAL: int(user_input[CONF_KEEPALIVE_INTERVAL]),
         CONF_ACTIVE_MODE_SMARTTAGS: user_input[_FIELD_MODE_SMARTTAGS] == _MODE_ACTIVE,
         CONF_ACTIVE_MODE_OTHERS: user_input[_FIELD_MODE_OTHERS] == _MODE_ACTIVE,
+        CONF_ACTIVE_INTERVAL: int(user_input[CONF_ACTIVE_INTERVAL]),
+        CONF_MAX_LOCATION_AGE: int(user_input[CONF_MAX_LOCATION_AGE]),
     }
 
 

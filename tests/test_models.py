@@ -23,6 +23,7 @@ def test_state_round_trip() -> None:
     state.last_operation = api.StfOperationStatus("LOCATION", "2800", "1200", T1, T1)
     state.lock = api.StfLockStatus(locked=True, remote_locked=False, checked_at=T2)
     state.request = "ok"
+    state.auto_location = True
 
     data = models.state_to_store(state)
     restored = models.state_from_store("738", data)
@@ -35,6 +36,7 @@ def test_state_round_trip() -> None:
     assert restored.last_operation == state.last_operation
     assert restored.lock == state.lock
     assert restored.request is None
+    assert restored.auto_location is True
 
 
 def test_old_store_entries_without_state() -> None:
@@ -44,3 +46,4 @@ def test_old_store_entries_without_state() -> None:
     )
     assert restored.device.is_tag
     assert restored.battery is None and restored.location is None
+    assert restored.auto_location is None  # follows the mode in the options
