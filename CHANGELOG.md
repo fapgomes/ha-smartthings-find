@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.2.0 — 2026-10-07
+
+### Fixed
+
+- **The tracker no longer overrides other trackers in a `person`.** Home
+  Assistant writes every tracker update, so each poll gave an unchanged (even
+  hours old) position a new `last_updated`; `person` follows the most recently
+  updated GPS tracker, so it kept switching between home and away. The tracker
+  now only writes its state when the position changes.
+
+### Added
+
+- `switch` Automatic location update, per device: active mode for that device
+  only. The SmartTag and other-device modes in the options are now defaults
+  for devices without a choice.
+- Option *Automatic update interval* (default 300 s): minimum time between
+  automatic location requests to the same device. *Update location* restarts
+  it.
+- Option *Maximum position age* (minutes, default 0 = no limit): an older
+  position is dropped (tracker `unknown`), so `person` uses its other
+  trackers.
+
+### Changed
+
+- Active mode no longer asks on every update, but at most once per automatic
+  update interval (with the defaults, about every 6 minutes instead of 2).
+
 ## 2.1.1 — 2026-09-30
 
 ### Fixed
