@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.1 — 2026-10-09
+
+### Fixed
+
+- **Network no longer drops to `unknown` after an offline finding.** A
+  position relayed by a nearby Galaxy device (`OFFLINE_LOC`) carries no
+  network, so a newer one left the sensor `unknown` until *Update location*
+  was pressed. The sensor now shows *Offline finding* for these positions.
+
 ## 2.2.0 — 2026-10-07
 
 ### Fixed
