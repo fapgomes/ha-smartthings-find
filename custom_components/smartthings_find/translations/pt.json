@@ -93,7 +93,10 @@
         "name": "Última atualização"
       },
       "network": {
-        "name": "Rede"
+        "name": "Rede",
+        "state": {
+          "offline_finding": "Localização offline"
+        }
       },
       "last_result": {
         "name": "Resultado do último pedido",

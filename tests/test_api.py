@@ -389,11 +389,33 @@ def test_connection_network_and_last_operation() -> None:
     assert report.location is not None
     assert report.location.location_type == "basic"
     assert report.location.network_type == "wifi"
+    assert report.location.network == "wifi"
     assert report.location.wifi_bssid == "aa:bb"
     assert report.connection is not None and report.connection.connected is True
     assert report.last_operation is not None
     assert report.last_operation.operation == "LOCATION"
     assert report.last_operation.outcome == "success"
+
+
+def test_offline_finding_network() -> None:
+    # Seen on a phone: a relayed position newer than the last LOCATION, with
+    # no ``extra.seData``.
+    enc = {"latitude": "1", "longitude": "2", "gpsUtcDt": "20261009055801"}
+    report = api.parse_operations(
+        [
+            {
+                "oprnType": "LOCATION",
+                "latitude": "3",
+                "longitude": "4",
+                "extra": {"gpsUtcDt": "20261008170624", "seData": {"netType": "wifi"}},
+            },
+            {"oprnType": "OFFLINE_LOC", "encLocation": enc, "encrypted": False},
+        ]
+    )
+    assert report.location is not None
+    assert report.location.operation == "OFFLINE_LOC"
+    assert report.location.network_type is None
+    assert report.location.network == api.NETWORK_OFFLINE_FINDING
 
 
 def test_failed_and_running_outcomes() -> None:

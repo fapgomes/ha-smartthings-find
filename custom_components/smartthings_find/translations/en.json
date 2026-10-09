@@ -93,7 +93,10 @@
         "name": "Last update"
       },
       "network": {
-        "name": "Network"
+        "name": "Network",
+        "state": {
+          "offline_finding": "Offline finding"
+        }
       },
       "last_result": {
         "name": "Last request result",

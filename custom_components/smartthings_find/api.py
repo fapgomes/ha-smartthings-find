@@ -36,7 +36,10 @@ OP_CHECK_CONNECTION = "CHECK_CONNECTION"
 OP_CHECK_CONNECTION_WITH_LOCATION = "CHECK_CONNECTION_WITH_LOCATION"
 OP_LOCATION = "LOCATION"
 OP_LASTLOC = "LASTLOC"
-LOCATION_OPERATIONS = (OP_LOCATION, OP_LASTLOC, "OFFLINE_LOC")
+OP_OFFLINE_LOC = "OFFLINE_LOC"
+LOCATION_OPERATIONS = (OP_LOCATION, OP_LASTLOC, OP_OFFLINE_LOC)
+# Network of a position relayed by a nearby Galaxy device (no ``netType``).
+NETWORK_OFFLINE_FINDING = "offline_finding"
 
 # oprnStsCd of a finished operation (2100 = still running). The web client
 # treats oprnResultCode 1200 as success.
@@ -119,6 +122,13 @@ class StfLocation:
     location_type: str | None = None
     network_type: str | None = None
     wifi_bssid: str | None = None
+
+    @property
+    def network(self) -> str | None:
+        """Network of the position, or ``offline_finding`` when relayed."""
+        if self.network_type is None and self.operation == OP_OFFLINE_LOC:
+            return NETWORK_OFFLINE_FINDING
+        return self.network_type
 
 
 @dataclass(slots=True)

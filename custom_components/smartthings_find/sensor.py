@@ -98,7 +98,11 @@ class StfLastUpdateSensor(StfEntity, SensorEntity):
 
 
 class StfNetworkSensor(StfEntity, SensorEntity):
-    """Network the device used for its last position (``wifi``...)."""
+    """Network the device used for its last position (``wifi``...).
+
+    Offline finding positions are relayed by a nearby Galaxy device, so they
+    carry no network; the sensor says so instead of ``unknown``.
+    """
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "network"
@@ -110,7 +114,7 @@ class StfNetworkSensor(StfEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         state = self.state_data
-        return state.location.network_type if state and state.location else None
+        return state.location.network if state and state.location else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
