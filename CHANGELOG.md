@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.1 — 2026-10-11
+
+### Fixed
+
+- **Clear instructions to copy the `ms-app://` address.** At the end of the
+  Samsung Account sign-in the browser shows nothing, so there is no error
+  message to copy the address from. The sign-in dialog and the README now
+  explain how to find it: developer tools → **Network** with *Preserve log*,
+  filter `ms-app`, **Copy URL**.
+
 ## 2.3.0 — 2026-10-11
 
 ### Added
