@@ -48,14 +48,27 @@ Find**, and choose how to sign in.
 You sign in once; Home Assistant keeps the resulting authorization and signs
 in a new SmartThings Find session whenever Samsung ends the current one.
 
-1. On a computer, open the sign-in link shown in the dialog and sign in to
-   your Samsung account (with the second factor, if asked).
-2. At the end the browser tries to open an address starting with
-   `ms-app://` and reports that it cannot. Copy that **whole address**, from
-   the error message, the address bar or the developer tools (F12) →
-   **Network**.
-3. Paste it in the dialog right away: the link is valid for 15 minutes and
-   the code in the address for a few minutes only.
+At the end of the sign-in, Samsung sends the browser to an address starting
+with `ms-app://`, meant for Samsung's Windows app. A normal browser cannot
+open it and **shows nothing**: the page just stays as it is. That address
+is what Home Assistant needs, and the browser's developer tools show it.
+Use a computer with Chrome, Edge or Firefox:
+
+1. In the dialog, choose **Samsung Account**. Copy the sign-in link it shows
+   (right-click → *Copy link*), but do not open it yet.
+2. Open a new browser tab, press **F12** (or `Ctrl`+`Shift`+`I`; on a Mac
+   `Cmd`+`Option`+`I`) and open the **Network** tab of the developer tools.
+   Tick **Preserve log** (Firefox: ⚙ → **Persist Logs**), so the list is
+   not cleared when the page changes.
+3. Paste the link in that tab's address bar and sign in to your Samsung
+   account, with the second factor if asked.
+4. When the sign-in ends, type `ms-app` in the **Filter** box of the Network
+   tab. One request appears (marked as cancelled or failed). Right-click it →
+   **Copy** → **Copy URL**.
+5. Back in Home Assistant, paste it in the field and submit **right away**:
+   the link is valid for 15 minutes and the code in the address for a few
+   minutes only. If it was too slow, the dialog shows a new link; start
+   again from step 3.
 
 Your password and second factor are only typed on Samsung's page. The
 authorization is stored in the config entry; treat a Home Assistant backup

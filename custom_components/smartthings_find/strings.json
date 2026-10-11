@@ -11,7 +11,7 @@
       },
       "account": {
         "title": "Samsung Account",
-        "description": "1. Open the [Samsung Account sign-in page]({login_url}) on a computer and sign in, including the second factor if asked.\n2. At the end the browser tries to open an address starting with `ms-app://` and reports that it cannot open it. Copy that **whole address**: from the error message, the address bar, or Developer Tools (F12) → Network.\n3. Paste it below within a few minutes; the link is valid for 15 minutes.\n\nHome Assistant keeps the resulting authorization and signs in a new SmartThings Find session by itself whenever Samsung ends the current one. Your password never reaches Home Assistant.",
+        "description": "1. Copy this [Samsung Account sign-in link]({login_url}) (right-click → *Copy link*), but do not open it yet.\n2. In a new browser tab on a computer, press **F12**, open the **Network** tab and tick **Preserve log** (Firefox: ⚙ → **Persist Logs**).\n3. Paste the link in that tab and sign in, with the second factor if asked. At the end the page seems to do nothing: that is expected.\n4. Type `ms-app` in the **Filter** box of the Network tab, right-click the request that appears → **Copy** → **Copy URL**, and paste it below **right away** (the code in it expires in a few minutes).\n\nHome Assistant keeps the resulting authorization and signs in a new SmartThings Find session by itself whenever Samsung ends the current one. Your password never reaches Home Assistant.",
         "data": {
           "redirect_uri": "Address starting with ms-app://",
           "update_interval": "Update interval (seconds)",
@@ -22,7 +22,7 @@
           "max_location_age": "Maximum position age (minutes, 0 = no limit)"
         },
         "data_description": {
-          "redirect_uri": "The whole `ms-app://…` address the browser could not open.",
+          "redirect_uri": "The `ms-app://…` address copied from the Network tab.",
           "active_interval": "Minimum time between automatic location requests to the same device. Requests are only sent on updates, so the real interval is rounded up to the next update.",
           "max_location_age": "After this, the tracker stops reporting the old position (state unknown), so `person` falls back to its other trackers.",
           "mode_smarttags": "Passive: read the last position Samsung has (no extra battery use). Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery). Change it per device with its *Automatic location update* switch.",
