@@ -48,7 +48,7 @@ WEB_FIND_SCOPE = "iot.client"
 # A sign-in link must be completed within this time.
 PENDING_MAX_AGE = 900
 
-_TRUSTED_AUTH_DOMAINS = ("account.samsung.com", "samsungosp.com")
+_SAMSUNG_ACCOUNT_DOMAINS = ("account.samsung.com", "samsungosp.com")
 
 
 class AccountAuthError(StfAuthError):
@@ -161,7 +161,7 @@ def trusted_auth_server(value: str) -> str:
         port = parts.port
     except ValueError:
         port = -1
-    trusted = any(host == d or host.endswith(f".{d}") for d in _TRUSTED_AUTH_DOMAINS)
+    trusted = any(host == d or host.endswith(f".{d}") for d in _SAMSUNG_ACCOUNT_DOMAINS)
     if (
         parts.scheme != "https"
         or not trusted
