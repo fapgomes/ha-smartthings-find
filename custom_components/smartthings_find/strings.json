@@ -3,7 +3,35 @@
     "step": {
       "user": {
         "title": "SmartThings Find",
-        "description": "1. Open a **private browser window** and sign in to [{stf_url}]({stf_url}).\n2. Open Developer Tools (F12) → Network and reload the page.\n3. Select the `chkLogin.do` request and copy its whole `Cookie` request header.\n4. Close the private window **without signing out**, and do not use that session in the browser again: Samsung may end a session that is used in two places.\n\n**Modes** (the default for each device; change it per device with its *Automatic location update* switch)\n- Passive: read the last position Samsung has (no extra battery use).\n- Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery).",
+        "description": "How should Home Assistant sign in to SmartThings Find? With the Samsung Account it renews the session by itself; a cookie has to be replaced whenever Samsung ends the session.",
+        "menu_options": {
+          "account": "Samsung Account (recommended)",
+          "cookie": "Browser Cookie header"
+        }
+      },
+      "account": {
+        "title": "Samsung Account",
+        "description": "1. Open the [Samsung Account sign-in page]({login_url}) on a computer and sign in, including the second factor if asked.\n2. At the end the browser tries to open an address starting with `ms-app://` and reports that it cannot open it. Copy that **whole address**: from the error message, the address bar, or Developer Tools (F12) → Network.\n3. Paste it below within a few minutes; the link is valid for 15 minutes.\n\nHome Assistant keeps the resulting authorization and signs in a new SmartThings Find session by itself whenever Samsung ends the current one. Your password never reaches Home Assistant.",
+        "data": {
+          "redirect_uri": "Address starting with ms-app://",
+          "update_interval": "Update interval (seconds)",
+          "keepalive_interval": "Session keepalive interval (seconds)",
+          "mode_smarttags": "Default SmartTag mode",
+          "mode_others": "Default mode for phones, watches and earbuds",
+          "active_interval": "Automatic update interval (seconds)",
+          "max_location_age": "Maximum position age (minutes, 0 = no limit)"
+        },
+        "data_description": {
+          "redirect_uri": "The whole `ms-app://…` address the browser could not open.",
+          "active_interval": "Minimum time between automatic location requests to the same device. Requests are only sent on updates, so the real interval is rounded up to the next update.",
+          "max_location_age": "After this, the tracker stops reporting the old position (state unknown), so `person` falls back to its other trackers.",
+          "mode_smarttags": "Passive: read the last position Samsung has (no extra battery use). Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery). Change it per device with its *Automatic location update* switch.",
+          "mode_others": "Passive: read the last position Samsung has (no extra battery use). Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery). Change it per device with its *Automatic location update* switch."
+        }
+      },
+      "cookie": {
+        "title": "Cookie header",
+        "description": "1. Open a **private browser window** and sign in to [{stf_url}]({stf_url}).\n2. Open Developer Tools (F12) → Network and reload the page.\n3. Select the `chkLogin.do` request and copy its whole `Cookie` request header.\n4. Close the private window **without signing out**, and do not use that session in the browser again: Samsung may end a session that is used in two places.",
         "data": {
           "cookie": "Cookie header",
           "update_interval": "Update interval (seconds)",
@@ -16,47 +44,49 @@
         "data_description": {
           "cookie": "The complete `Cookie` header of the `chkLogin.do` request.",
           "active_interval": "Minimum time between automatic location requests to the same device. Requests are only sent on updates, so the real interval is rounded up to the next update.",
-          "max_location_age": "After this, the tracker stops reporting the old position (state unknown), so `person` falls back to its other trackers."
+          "max_location_age": "After this, the tracker stops reporting the old position (state unknown), so `person` falls back to its other trackers.",
+          "mode_smarttags": "Passive: read the last position Samsung has (no extra battery use). Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery). Change it per device with its *Automatic location update* switch.",
+          "mode_others": "Passive: read the last position Samsung has (no extra battery use). Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery). Change it per device with its *Automatic location update* switch."
         }
       },
       "reauth_confirm": {
-        "title": "Renew the SmartThings Find session",
-        "description": "1. Open a **private browser window** and sign in to [{stf_url}]({stf_url}).\n2. Open Developer Tools (F12) → Network and reload the page.\n3. Select the `chkLogin.do` request and copy its whole `Cookie` request header.\n4. Close the private window **without signing out**, and do not use that session in the browser again: Samsung may end a session that is used in two places.",
-        "data": {
-          "cookie": "Cookie header"
-        },
-        "data_description": {
-          "cookie": "The complete `Cookie` header of the `chkLogin.do` request."
+        "title": "Renew the SmartThings Find sign-in",
+        "description": "Samsung ended the session. Sign in again:",
+        "menu_options": {
+          "account": "Samsung Account (recommended)",
+          "cookie": "Browser Cookie header"
         }
       },
       "reconfigure": {
-        "title": "Replace the SmartThings Find cookie",
-        "description": "1. Open a **private browser window** and sign in to [{stf_url}]({stf_url}).\n2. Open Developer Tools (F12) → Network and reload the page.\n3. Select the `chkLogin.do` request and copy its whole `Cookie` request header.\n4. Close the private window **without signing out**, and do not use that session in the browser again: Samsung may end a session that is used in two places.",
-        "data": {
-          "cookie": "Cookie header"
-        },
-        "data_description": {
-          "cookie": "The complete `Cookie` header of the `chkLogin.do` request."
+        "title": "Change the SmartThings Find sign-in",
+        "description": "Choose how Home Assistant signs in:",
+        "menu_options": {
+          "account": "Samsung Account (recommended)",
+          "cookie": "Browser Cookie header"
         }
       }
     },
     "error": {
       "invalid_auth": "SmartThings Find rejected this cookie. Copy it again from the `chkLogin.do` request.",
       "cannot_connect": "Could not reach SmartThings Find. Try again later.",
-      "no_devices": "The cookie works, but the account has no devices.",
-      "unknown": "Unexpected response from SmartThings Find."
+      "no_devices": "Signed in, but the account has no devices.",
+      "unknown": "Unexpected response from SmartThings Find.",
+      "invalid_redirect": "This is not the address of this sign-in. Copy the whole `ms-app://` address again.",
+      "login_expired": "The sign-in link expired. Use the new link above.",
+      "account_rejected": "Samsung rejected the sign-in. Sign in again with the new link above, and paste the address right away."
     },
     "abort": {
       "already_configured": "SmartThings Find is already configured.",
-      "reauth_successful": "Session renewed.",
-      "reconfigure_successful": "Cookie replaced."
+      "reauth_successful": "Sign-in renewed.",
+      "reconfigure_successful": "Sign-in changed.",
+      "cannot_connect": "Could not reach SmartThings Find. Try again later."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "SmartThings Find",
-        "description": "Paste a new Cookie header only to replace the current session.\n\n**Modes** (the default for each device; change it per device with its *Automatic location update* switch)\n- Passive: read the last position Samsung has (no extra battery use).\n- Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery).",
+        "description": "With a Samsung Account sign-in the session renews itself. With a cookie, paste a new Cookie header only to replace the current session.\n\n**Modes** (the default for each device; change it per device with its *Automatic location update* switch)\n- Passive: read the last position Samsung has (no extra battery use).\n- Active: ask the device for its position automatically, at most once per automatic update interval (fresher, uses the device's battery).",
         "data": {
           "cookie": "New Cookie header (leave empty to keep the current one)",
           "update_interval": "Update interval (seconds)",

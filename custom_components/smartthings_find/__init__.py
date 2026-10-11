@@ -7,7 +7,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.device_registry import DeviceEntry
 
-from .const import AUTH_METHOD_COOKIE, CONF_AUTH_METHOD, DOMAIN
+from .account import AccountGrant
+from .const import (
+    AUTH_METHOD_ACCOUNT,
+    AUTH_METHOD_COOKIE,
+    CONF_ACCOUNT,
+    CONF_AUTH_METHOD,
+    DOMAIN,
+)
 from .coordinator import StfConfigEntry, StfCoordinator
 from .store import SessionStore
 
@@ -21,9 +28,13 @@ PLATFORMS = [
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: StfConfigEntry) -> bool:
-    if entry.data.get(CONF_AUTH_METHOD, AUTH_METHOD_COOKIE) != AUTH_METHOD_COOKIE:
-        # Samsung Account entries from upstream v1.4.0/1.4.1 must move to a cookie.
-        raise ConfigEntryAuthFailed("Only the Cookie header method is supported")
+    method = entry.data.get(CONF_AUTH_METHOD, AUTH_METHOD_COOKIE)
+    if method == AUTH_METHOD_ACCOUNT:
+        # Upstream v1.4.0/1.4.1 account entries kept their grant elsewhere.
+        if AccountGrant.from_dict(entry.data.get(CONF_ACCOUNT)) is None:
+            raise ConfigEntryAuthFailed("Sign in again with the Samsung account")
+    elif method != AUTH_METHOD_COOKIE:
+        raise ConfigEntryAuthFailed(f"Unknown sign-in method {method!r}")
 
     coordinator = StfCoordinator(hass, entry)
     await coordinator.async_setup()

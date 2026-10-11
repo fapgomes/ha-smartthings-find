@@ -17,8 +17,9 @@ and ask them for their current position.
 
 > [!NOTE]
 > Samsung has no public API for SmartThings Find. This integration uses the
-> website's session, authenticated with the browser's `Cookie` header. When
-> the session expires, Home Assistant asks for a new cookie.
+> website's session. Signed in with the Samsung Account, it starts a new
+> session by itself whenever Samsung ends one; signed in with a browser
+> `Cookie` header, Home Assistant asks for a new cookie instead.
 
 ## Installation
 
@@ -40,7 +41,33 @@ Copy the `custom_components/smartthings_find` folder of this repository to
 [![Add the integration to Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=smartthings_find)
 
 Or go to **Settings → Devices & services → Add integration → SmartThings
-Find**. You will be asked for the `Cookie` header:
+Find**, and choose how to sign in.
+
+### Samsung Account (recommended)
+
+You sign in once; Home Assistant keeps the resulting authorization and signs
+in a new SmartThings Find session whenever Samsung ends the current one.
+
+1. On a computer, open the sign-in link shown in the dialog and sign in to
+   your Samsung account (with the second factor, if asked).
+2. At the end the browser tries to open an address starting with
+   `ms-app://` and reports that it cannot. Copy that **whole address**, from
+   the error message, the address bar or the developer tools (F12) →
+   **Network**.
+3. Paste it in the dialog right away: the link is valid for 15 minutes and
+   the code in the address for a few minutes only.
+
+Your password and second factor are only typed on Samsung's page. The
+authorization is stored in the config entry; treat a Home Assistant backup
+like a password. If Samsung ever revokes it, Home Assistant asks you to sign
+in again.
+
+> [!NOTE]
+> The sign-in uses the protocol of Samsung's own apps, as implemented by
+> [samsung-re-find](https://github.com/charlesbel/samsung-re-find). How long
+> Samsung keeps the authorization valid is not known.
+
+### Browser Cookie header
 
 1. On a computer, open a **private browser window** and sign in to
    [smartthingsfind.samsung.com](https://smartthingsfind.samsung.com).
@@ -78,7 +105,8 @@ old position is dropped and `person` uses its other trackers instead. The
 tracker only writes its state when the position changes, so an unchanged
 position never looks newer than the companion app's.
 
-The cookie can be replaced in the options or with **Reconfigure**.
+The cookie can be replaced in the options. **Reconfigure** switches between
+the Samsung Account and a cookie.
 
 ## Entities
 
@@ -132,7 +160,8 @@ entities, automations or history:
 2. Install this integration with HACS (see [Installation](#installation))
    and restart.
 3. The existing entry now runs the new code. If the session has expired,
-   use **Reauthenticate** with a new cookie.
+   use **Reauthenticate** and sign in with the Samsung Account (or a new
+   cookie).
 
 To start from scratch, also delete the old integration before adding it
 again. The entities may then get different IDs.
@@ -140,12 +169,13 @@ again. The entities may then get different IDs.
 ## Troubleshooting
 
 - **Devices that disappear:** Samsung sometimes keeps accepting a session but
-  stops returning some devices. The integration detects this and asks for a
-  new cookie. A device you removed from your Samsung account on purpose can
+  stops returning some devices. The integration detects this and signs in a
+  new session (Samsung Account, at most every 30 minutes) or asks for a new
+  cookie. A device you removed from your Samsung account on purpose can
   be deleted from its device page in Home Assistant.
 - **Diagnostics:** on the integration page, ⋮ → **Download diagnostics**.
-  They include the API responses, with the cookie, user IDs and coordinates
-  redacted.
+  They include the API responses, with the cookie, the account
+  authorization, user IDs and coordinates redacted.
 - **Debug logs:**
 
   ```yaml
@@ -160,8 +190,9 @@ again. The entities may then get different IDs.
 python3 -m pytest tests
 ```
 
-The API client (`api.py`) does not depend on Home Assistant. The tests run
-against a local server that simulates Samsung, with no account or cookie.
+The API client (`api.py`) and the Samsung Account sign-in (`account.py`) do
+not depend on Home Assistant. The tests run against a local server that
+simulates Samsung, with no account or cookie.
 `tools/extract_site_js.py` downloads the website's public JavaScript and
 lists the endpoints and operations it uses.
 

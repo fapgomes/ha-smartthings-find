@@ -13,11 +13,12 @@ from typing import Any
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_COOKIE
+from .const import CONF_ACCOUNT, CONF_COOKIE
 from .coordinator import StfConfigEntry
 
 TO_REDACT = {
     CONF_COOKIE,
+    CONF_ACCOUNT,
     "usrId",
     "userId",
     "user_id",

@@ -3,7 +3,35 @@
     "step": {
       "user": {
         "title": "SmartThings Find",
-        "description": "1. Abra uma **janela privada** do browser e inicie sessão em [{stf_url}]({stf_url}).\n2. Abra as ferramentas de programador (F12) → Rede e recarregue a página.\n3. Selecione o pedido `chkLogin.do` e copie o cabeçalho `Cookie` completo do pedido.\n4. Feche a janela privada **sem terminar a sessão** e não volte a usar essa sessão no browser: a Samsung pode terminar uma sessão usada em dois sítios.\n\n**Modos** (o valor por omissão de cada dispositivo; altere-o por dispositivo no interruptor *Atualização automática da localização*)\n- Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria).\n- Ativo: pede a posição ao dispositivo automaticamente, no máximo uma vez por intervalo de atualização automática (mais recente, gasta bateria do dispositivo).",
+        "description": "Como deve o Home Assistant iniciar sessão no SmartThings Find? Com a conta Samsung renova a sessão sozinho; um cookie tem de ser substituído sempre que a Samsung termina a sessão.",
+        "menu_options": {
+          "account": "Conta Samsung (recomendado)",
+          "cookie": "Cabeçalho Cookie do browser"
+        }
+      },
+      "account": {
+        "title": "Conta Samsung",
+        "description": "1. Abra a [página de início de sessão da conta Samsung]({login_url}) num computador e inicie sessão, incluindo o segundo fator se for pedido.\n2. No fim, o browser tenta abrir um endereço que começa por `ms-app://` e diz que não o consegue abrir. Copie esse **endereço completo**: da mensagem de erro, da barra de endereço ou das ferramentas de programador (F12) → Rede.\n3. Cole-o abaixo dentro de poucos minutos; o link é válido durante 15 minutos.\n\nO Home Assistant guarda a autorização obtida e inicia sozinho uma nova sessão do SmartThings Find sempre que a Samsung termina a atual. A palavra-passe nunca chega ao Home Assistant.",
+        "data": {
+          "redirect_uri": "Endereço que começa por ms-app://",
+          "update_interval": "Intervalo de atualização (segundos)",
+          "keepalive_interval": "Intervalo para manter a sessão ativa (segundos)",
+          "mode_smarttags": "Modo por omissão das SmartTags",
+          "mode_others": "Modo por omissão dos telemóveis, relógios e auriculares",
+          "active_interval": "Intervalo de atualização automática (segundos)",
+          "max_location_age": "Idade máxima da posição (minutos, 0 = sem limite)"
+        },
+        "data_description": {
+          "redirect_uri": "O endereço `ms-app://…` completo que o browser não conseguiu abrir.",
+          "active_interval": "Tempo mínimo entre pedidos automáticos de localização ao mesmo dispositivo. Os pedidos só são enviados nas atualizações, por isso o intervalo real é arredondado para a atualização seguinte.",
+          "max_location_age": "Depois deste tempo, o tracker deixa de reportar a posição antiga (estado desconhecido) e o `person` passa a usar os outros trackers.",
+          "mode_smarttags": "Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria). Ativo: pede a posição ao dispositivo automaticamente, no máximo uma vez por intervalo de atualização automática (mais recente, gasta bateria do dispositivo). Altere-o por dispositivo no interruptor *Atualização automática da localização*.",
+          "mode_others": "Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria). Ativo: pede a posição ao dispositivo automaticamente, no máximo uma vez por intervalo de atualização automática (mais recente, gasta bateria do dispositivo). Altere-o por dispositivo no interruptor *Atualização automática da localização*."
+        }
+      },
+      "cookie": {
+        "title": "Cabeçalho Cookie",
+        "description": "1. Abra uma **janela privada** do browser e inicie sessão em [{stf_url}]({stf_url}).\n2. Abra as ferramentas de programador (F12) → Rede e recarregue a página.\n3. Selecione o pedido `chkLogin.do` e copie o cabeçalho `Cookie` completo do pedido.\n4. Feche a janela privada **sem terminar a sessão** e não volte a usar essa sessão no browser: a Samsung pode terminar uma sessão usada em dois sítios.",
         "data": {
           "cookie": "Cabeçalho Cookie",
           "update_interval": "Intervalo de atualização (segundos)",
@@ -16,47 +44,49 @@
         "data_description": {
           "cookie": "O cabeçalho `Cookie` completo do pedido `chkLogin.do`.",
           "active_interval": "Tempo mínimo entre pedidos automáticos de localização ao mesmo dispositivo. Os pedidos só são enviados nas atualizações, por isso o intervalo real é arredondado para a atualização seguinte.",
-          "max_location_age": "Depois deste tempo, o tracker deixa de reportar a posição antiga (estado desconhecido) e o `person` passa a usar os outros trackers."
+          "max_location_age": "Depois deste tempo, o tracker deixa de reportar a posição antiga (estado desconhecido) e o `person` passa a usar os outros trackers.",
+          "mode_smarttags": "Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria). Ativo: pede a posição ao dispositivo automaticamente, no máximo uma vez por intervalo de atualização automática (mais recente, gasta bateria do dispositivo). Altere-o por dispositivo no interruptor *Atualização automática da localização*.",
+          "mode_others": "Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria). Ativo: pede a posição ao dispositivo automaticamente, no máximo uma vez por intervalo de atualização automática (mais recente, gasta bateria do dispositivo). Altere-o por dispositivo no interruptor *Atualização automática da localização*."
         }
       },
       "reauth_confirm": {
-        "title": "Renovar a sessão do SmartThings Find",
-        "description": "1. Abra uma **janela privada** do browser e inicie sessão em [{stf_url}]({stf_url}).\n2. Abra as ferramentas de programador (F12) → Rede e recarregue a página.\n3. Selecione o pedido `chkLogin.do` e copie o cabeçalho `Cookie` completo do pedido.\n4. Feche a janela privada **sem terminar a sessão** e não volte a usar essa sessão no browser: a Samsung pode terminar uma sessão usada em dois sítios.",
-        "data": {
-          "cookie": "Cabeçalho Cookie"
-        },
-        "data_description": {
-          "cookie": "O cabeçalho `Cookie` completo do pedido `chkLogin.do`."
+        "title": "Renovar o início de sessão no SmartThings Find",
+        "description": "A Samsung terminou a sessão. Inicie sessão novamente:",
+        "menu_options": {
+          "account": "Conta Samsung (recomendado)",
+          "cookie": "Cabeçalho Cookie do browser"
         }
       },
       "reconfigure": {
-        "title": "Substituir o cookie do SmartThings Find",
-        "description": "1. Abra uma **janela privada** do browser e inicie sessão em [{stf_url}]({stf_url}).\n2. Abra as ferramentas de programador (F12) → Rede e recarregue a página.\n3. Selecione o pedido `chkLogin.do` e copie o cabeçalho `Cookie` completo do pedido.\n4. Feche a janela privada **sem terminar a sessão** e não volte a usar essa sessão no browser: a Samsung pode terminar uma sessão usada em dois sítios.",
-        "data": {
-          "cookie": "Cabeçalho Cookie"
-        },
-        "data_description": {
-          "cookie": "O cabeçalho `Cookie` completo do pedido `chkLogin.do`."
+        "title": "Alterar o início de sessão no SmartThings Find",
+        "description": "Escolha como o Home Assistant inicia sessão:",
+        "menu_options": {
+          "account": "Conta Samsung (recomendado)",
+          "cookie": "Cabeçalho Cookie do browser"
         }
       }
     },
     "error": {
       "invalid_auth": "O SmartThings Find recusou este cookie. Copie-o outra vez do pedido `chkLogin.do`.",
       "cannot_connect": "Não foi possível contactar o SmartThings Find. Tente mais tarde.",
-      "no_devices": "O cookie funciona, mas a conta não tem dispositivos.",
-      "unknown": "Resposta inesperada do SmartThings Find."
+      "no_devices": "A sessão foi iniciada, mas a conta não tem dispositivos.",
+      "unknown": "Resposta inesperada do SmartThings Find.",
+      "invalid_redirect": "Este não é o endereço deste início de sessão. Copie novamente o endereço `ms-app://` completo.",
+      "login_expired": "O link de início de sessão expirou. Use o novo link acima.",
+      "account_rejected": "A Samsung rejeitou o início de sessão. Inicie sessão novamente com o novo link acima e cole o endereço logo a seguir."
     },
     "abort": {
       "already_configured": "O SmartThings Find já está configurado.",
-      "reauth_successful": "Sessão renovada.",
-      "reconfigure_successful": "Cookie substituído."
+      "reauth_successful": "Início de sessão renovado.",
+      "reconfigure_successful": "Início de sessão alterado.",
+      "cannot_connect": "Não foi possível contactar o SmartThings Find. Tente mais tarde."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "SmartThings Find",
-        "description": "Cole um cabeçalho Cookie novo apenas se quiser substituir a sessão atual.\n\n**Modos** (o valor por omissão de cada dispositivo; altere-o por dispositivo no interruptor *Atualização automática da localização*)\n- Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria).\n- Ativo: pede a posição ao dispositivo automaticamente, no máximo uma vez por intervalo de atualização automática (mais recente, gasta bateria do dispositivo).",
+        "description": "Com o início de sessão pela conta Samsung, a sessão renova-se sozinha. Com um cookie, cole um novo cabeçalho Cookie apenas para substituir a sessão atual.\n\n**Modos** (o valor por omissão de cada dispositivo; altere-o por dispositivo no interruptor *Atualização automática da localização*)\n- Passivo: lê a última posição que a Samsung tem (sem gasto extra de bateria).\n- Ativo: pede a posição ao dispositivo automaticamente, no máximo uma vez por intervalo de atualização automática (mais recente, gasta bateria do dispositivo).",
         "data": {
           "cookie": "Novo cabeçalho Cookie (deixe vazio para manter o atual)",
           "update_interval": "Intervalo de atualização (segundos)",

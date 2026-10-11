@@ -22,6 +22,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .account import AccountAuthError, AccountGrant, async_web_login
 from .api import (
     BASE_URL,
     OP_RING,
@@ -41,9 +42,13 @@ from .api import (
 )
 from .const import (
     AUTH_FAILURES_BEFORE_REAUTH,
+    AUTH_METHOD_ACCOUNT,
+    AUTH_METHOD_COOKIE,
     CONF_ACTIVE_INTERVAL,
     CONF_ACTIVE_MODE_OTHERS,
     CONF_ACTIVE_MODE_SMARTTAGS,
+    CONF_ACCOUNT,
+    CONF_AUTH_METHOD,
     CONF_COOKIE,
     CONF_KEEPALIVE_INTERVAL,
     CONF_MAX_LOCATION_AGE,
@@ -54,6 +59,7 @@ from .const import (
     DEFAULT_KEEPALIVE_INTERVAL,
     DEFAULT_MAX_LOCATION_AGE,
     DEFAULT_UPDATE_INTERVAL,
+    DEGRADED_RENEW_INTERVAL,
     DOMAIN,
     LOCATION_RESULT_POLL_DELAYS,
     MIN_ACTIVE_INTERVAL,
@@ -64,6 +70,7 @@ from .const import (
     REQUEST_PENDING,
     REQUEST_TIMEOUT,
     RING_MESSAGE,
+    SESSION_RENEW_MIN_INTERVAL,
     SETUP_AUTH_RETRY_DELAYS,
     SIGNAL_NEW_DEVICES,
 )
@@ -138,6 +145,8 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
         self._auth_failures = 0
         self._last_request = datetime.min.replace(tzinfo=timezone.utc)
         self._degraded_reported = False
+        self._last_renewal: datetime | None = None
+        self._degraded_renewal: datetime | None = None
         self._location_tasks: dict[str, asyncio.Task[None]] = {}
         self._location_requested: dict[str, datetime] = {}
 
@@ -145,7 +154,17 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
     # Setup and teardown
 
     @property
-    def _configured_cookie(self) -> str:
+    def _account(self) -> AccountGrant | None:
+        """The Samsung Account grant, for entries signed in that way."""
+        if self.config_entry.data.get(CONF_AUTH_METHOD) != AUTH_METHOD_ACCOUNT:
+            return None
+        return AccountGrant.from_dict(self.config_entry.data.get(CONF_ACCOUNT))
+
+    @property
+    def _session_source(self) -> str:
+        """What the stored session descends from: the cookie or the account."""
+        if (grant := self._account) is not None:
+            return f"{AUTH_METHOD_ACCOUNT}:{grant.user_id}:{grant.device_id}"
         return str(self.config_entry.data.get(CONF_COOKIE) or "").strip()
 
     async def async_setup(self) -> None:
@@ -168,8 +187,10 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
                         served=False,
                     )
 
-        candidates = [self._store.rotated_cookie(self._configured_cookie)]
-        candidates.append(self._configured_cookie)
+        account = self._account is not None
+        candidates = [self._store.rotated_cookie(self._session_source)]
+        if not account:
+            candidates.append(self._session_source)
         last_error: StfError | None = None
         for cookie_line in dict.fromkeys(c for c in candidates if c):
             cookies = parse_cookie_header(cookie_line)
@@ -178,7 +199,11 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
             session = create_session(cookies)
             client = StfClient(session)
             try:
-                await self._check_login_with_retries(client)
+                if account:
+                    # A new session is cheap to get: no retries on an old one.
+                    await client.check_login()
+                else:
+                    await self._check_login_with_retries(client)
             except StfError as err:
                 await session.close()
                 last_error = err
@@ -186,6 +211,16 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
                     continue
                 raise ConfigEntryNotReady(str(err)) from err
             self._client = client
+            return
+
+        if account:
+            try:
+                self._client = await self._async_account_client()
+            except AccountAuthError as err:
+                raise ConfigEntryAuthFailed(str(err)) from err
+            except StfError as err:
+                raise ConfigEntryNotReady(str(err)) from err
+            self._last_renewal = datetime.now(timezone.utc)
             return
 
         if last_error is None:
@@ -235,15 +270,61 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
         if self._client is None:
             raise StfAuthError("No session")
         async with self._lock:
-            result = await call(self._client)
+            try:
+                result = await call(self._client)
+            except StfAuthError:
+                # A rejected request was not carried out, so it is safe to
+                # repeat it once on a new session.
+                if not await self._async_renew_session_locked():
+                    raise
+                result = await call(self._client)
             self._last_request = datetime.now(timezone.utc)
             return result
+
+    async def _async_account_client(self) -> StfClient:
+        """Sign a new web session in with the Samsung Account grant."""
+        grant = self._account
+        if grant is None:
+            raise StfAuthError("No Samsung Account grant")
+        session = create_session({})
+        client = StfClient(session)
+        try:
+            await async_web_login(session, grant)
+            await client.check_login()
+        except BaseException:
+            await session.close()
+            raise
+        return client
+
+    async def _async_renew_session_locked(self, *, force: bool = False) -> bool:
+        """Replace a rejected session with a new one (Samsung Account only).
+
+        Call with ``self._lock`` held. Returns False when there is no account
+        grant or a session was renewed too recently; raises
+        :class:`AccountAuthError` when Samsung no longer accepts the grant.
+        """
+        if self._account is None:
+            return False
+        now = datetime.now(timezone.utc)
+        if (
+            not force
+            and self._last_renewal is not None
+            and (now - self._last_renewal).total_seconds() < SESSION_RENEW_MIN_INTERVAL
+        ):
+            return False
+        self._last_renewal = now
+        client = await self._async_account_client()
+        old, self._client = self._client, client
+        if old is not None:
+            await old.session.close()
+        _LOGGER.info("Signed in to SmartThings Find with a new session")
+        return True
 
     async def _persist(self) -> None:
         if self._client is None:
             return
         await self._store.async_save(
-            configured_cookie=self._configured_cookie,
+            configured_cookie=self._session_source,
             cookie=format_cookie_header(self._client.cookies()),
             devices={
                 device_id: state_to_store(state)
@@ -252,7 +333,11 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
         )
 
     def _auth_failed(self, err: StfAuthError) -> Exception:
-        """Count a rejected session; ask for a new cookie once it persists."""
+        """Count a rejected session; ask to sign in again once it persists."""
+        if isinstance(err, AccountAuthError):
+            return ConfigEntryAuthFailed(
+                f"Samsung no longer accepts the account sign-in: {err}"
+            )
         self._auth_failures += 1
         if self._auth_failures >= AUTH_FAILURES_BEFORE_REAUTH:
             return ConfigEntryAuthFailed(
@@ -345,7 +430,7 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
             state.raw["snapshot"] = snapshot
             self._merge_report(state, parse_response_report(snapshot))
 
-        self._check_degraded()
+        await self._async_check_degraded()
         await self._persist()
         if new_ids:
             async_dispatcher_send(
@@ -382,13 +467,15 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
                 state.served = False
         return new_ids
 
-    def _check_degraded(self) -> None:
-        """Ask for a new cookie when known devices stop being served.
+    async def _async_check_degraded(self) -> None:
+        """React when known devices stop being served.
 
         Samsung sometimes keeps accepting a session but stops returning some
         devices (seen with SmartTags). The cookie is not rejected, so only a
-        missing device reveals it. Devices disabled in Home Assistant are
-        ignored; a device really removed from the account can be deleted
+        missing device reveals it. With a Samsung Account grant a new session
+        is signed in (at most every ``DEGRADED_RENEW_INTERVAL``); with a
+        cookie, a new cookie is requested. Devices disabled in Home Assistant
+        are ignored; a device really removed from the account can be deleted
         from Home Assistant, which also forgets it here.
         """
         registry = dr.async_get(self.hass)
@@ -403,6 +490,10 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
 
         if not missing:
             self._degraded_reported = False
+            self._degraded_renewal = None
+            return
+        if self._account is not None:
+            await self._async_renew_degraded(missing)
             return
         if self._degraded_reported:
             return
@@ -413,6 +504,34 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
             ", ".join(sorted(missing)),
         )
         self.config_entry.async_start_reauth(self.hass)
+
+    async def _async_renew_degraded(self, missing: list[str]) -> None:
+        now = datetime.now(timezone.utc)
+        if (
+            self._degraded_renewal is not None
+            and (now - self._degraded_renewal).total_seconds() < DEGRADED_RENEW_INTERVAL
+        ):
+            return
+        self._degraded_renewal = now
+        _LOGGER.warning(
+            "SmartThings Find no longer returns %s for this session; "
+            "signing in a new session",
+            ", ".join(sorted(missing)),
+        )
+        try:
+            async with self._lock:
+                await self._async_renew_session_locked(force=True)
+        except AccountAuthError as err:
+            raise ConfigEntryAuthFailed(
+                f"Samsung no longer accepts the account sign-in: {err}"
+            ) from err
+        except StfError as err:
+            _LOGGER.warning("Could not sign in a new SmartThings Find session: %s", err)
+            return
+        # The devices come back with the next update.
+        self.config_entry.async_create_background_task(
+            self.hass, self.async_request_refresh(), f"{DOMAIN} refresh after renewal"
+        )
 
     @staticmethod
     def _merge_report(
@@ -622,6 +741,12 @@ class StfCoordinator(DataUpdateCoordinator[dict[str, DeviceState]]):
 
     def diagnostics(self) -> dict[str, Any]:
         return {
+            "auth_method": self.config_entry.data.get(
+                CONF_AUTH_METHOD, AUTH_METHOD_COOKIE
+            ),
+            "last_session_renewal": (
+                self._last_renewal.isoformat() if self._last_renewal else None
+            ),
             "auth_failures": self._auth_failures,
             "degraded_reported": self._degraded_reported,
             "last_request": self._last_request.isoformat(),

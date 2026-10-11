@@ -6,11 +6,13 @@ from typing import Final
 
 DOMAIN: Final = "smartthings_find"
 
-# Config entry data. ``auth_method`` is kept for entries created by upstream
-# releases; only the cookie method is supported.
+# Config entry data. ``auth_method`` keeps upstream's values: a browser
+# Cookie header, or a Samsung Account grant that mints new web sessions.
 CONF_AUTH_METHOD: Final = "auth_method"
 CONF_COOKIE: Final = "cookie"
+CONF_ACCOUNT: Final = "account"
 AUTH_METHOD_COOKIE: Final = "cookie"
+AUTH_METHOD_ACCOUNT: Final = "samsung_account"
 
 # Options (key names kept compatible with upstream v1.4.x entries).
 CONF_UPDATE_INTERVAL: Final = "update_interval"
@@ -36,6 +38,11 @@ MIN_ACTIVE_INTERVAL: Final = 60
 # Consecutive rejected update cycles before asking for a new cookie. A single
 # ``Logout`` body is occasionally transient.
 AUTH_FAILURES_BEFORE_REAUTH: Final = 3
+
+# Samsung Account sign-in: minimum time between two new web sessions, and
+# between two attempts to recover devices a session stopped returning.
+SESSION_RENEW_MIN_INTERVAL: Final = 60
+DEGRADED_RENEW_INTERVAL: Final = 1800
 
 # Delays (seconds) between chkLogin.do attempts while setting up.
 SETUP_AUTH_RETRY_DELAYS: Final[tuple[int, ...]] = (2, 5, 15)
