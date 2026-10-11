@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.3.0 — 2026-10-11
+
+### Added
+
+- **Sign in with the Samsung Account; the session renews itself.** Sign in
+  once on Samsung's page and paste the `ms-app://` address the browser could
+  not open. Home Assistant keeps the resulting authorization and starts a new
+  SmartThings Find session whenever Samsung ends the current one, or stops
+  returning some devices (at most every 30 minutes), instead of asking for a
+  new cookie. It only asks to sign in again if Samsung revokes the
+  authorization.
+- Adding, re-authenticating and reconfiguring the integration now offer
+  *Samsung Account* or *Browser Cookie header*. **Reconfigure** switches an
+  existing entry between the two.
+
+### Changed
+
+- The cookie method is unchanged. Entries created with the Samsung Account
+  of upstream v1.4.0/1.4.1 now ask to sign in again (they asked for a cookie).
+- Diagnostics also redact the account authorization.
+
 ## 2.2.1 — 2026-10-09
 
 ### Fixed
