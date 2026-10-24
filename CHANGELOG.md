@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.2 — 2026-10-24
+
+### Changed
+
+- **Validation on GitHub.** Every push now runs the HACS Action and hassfest,
+  as required for inclusion in the HACS default list.
+
 ## 2.3.1 — 2026-10-11
 
 ### Fixed
