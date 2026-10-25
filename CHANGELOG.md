@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.3 — 2026-10-25
+
+### Fixed
+
+- **Diagnostics no longer include the Wi-Fi network or device names.** The
+  diagnostics download now hides `bssid`, `ssid`, `name` and `modelName`, as
+  it already did for the coordinates. A Wi-Fi BSSID can be looked up in public
+  databases to find where a device is, and device names are often personal
+  names.
+
 ## 2.3.2 — 2026-10-24
 
 ### Changed
